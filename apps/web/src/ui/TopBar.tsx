@@ -1,5 +1,5 @@
 import type { ProjectState, ProjectSummary } from '@scad/core/protocol'
-import { HelpCircle, RefreshCw, SquareTerminal } from 'lucide-react'
+import { HelpCircle, Maximize2, RefreshCw, SquareTerminal } from 'lucide-react'
 import { requestRender } from '../api.ts'
 import { useStore } from '../store.ts'
 
@@ -31,6 +31,7 @@ export const TopBar = ({ projects, project }: { projects: ProjectSummary[]; proj
   const selectProject = useStore((s) => s.selectProject)
   const toggleConsole = useStore((s) => s.toggleConsole)
   const toggleHelp = useStore((s) => s.toggleHelp)
+  const toggleEmbed = useStore((s) => s.toggleEmbed)
   return (
     <header className="topbar">
       <div className="brand">
@@ -67,6 +68,11 @@ export const TopBar = ({ projects, project }: { projects: ProjectSummary[]; proj
         <button type="button" className="icon-btn" title="Console (C)" onClick={toggleConsole}>
           <SquareTerminal size={15} />
         </button>
+        {project && (
+          <button type="button" className="icon-btn" title="Viewport only (V)" onClick={toggleEmbed}>
+            <Maximize2 size={15} />
+          </button>
+        )}
         <button type="button" className="icon-btn" title="Keys (?)" onClick={toggleHelp}>
           <HelpCircle size={15} />
         </button>

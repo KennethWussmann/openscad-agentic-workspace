@@ -1,3 +1,4 @@
+import { Minimize2 } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 import { Vector3 } from 'three'
 import { announce, clearTweak, connect, fetchProject, fetchProjects, requestTweak } from './api.ts'
@@ -118,6 +119,8 @@ const useKeys = () => {
         s: () => s.setSection({ enabled: !s.section.enabled }),
         m: () => s.setTool(s.tool === 'measure' ? 'orbit' : 'measure'),
         c: () => s.toggleConsole(),
+        b: () => s.toggleSidebar(),
+        v: () => s.toggleEmbed(),
         '?': () => s.toggleHelp(),
         '[': () => step(-1),
         ']': () => step(1),
@@ -181,28 +184,39 @@ export const App = () => {
   const tool = useStore((s) => s.tool)
   const pending = useStore((s) => s.pending)
   const rendering = useStore((s) => s.rendering.preview)
+  const embed = useStore((s) => s.embed)
+  const toggleEmbed = useStore((s) => s.toggleEmbed)
   return (
-    <div className="app">
-      <TopBar projects={projects} project={project} />
+    <div className={`app${embed ? ' is-embed' : ''}`}>
+      {!embed && <TopBar projects={projects} project={project} />}
       <div className={`progress${rendering ? ' is-on' : ''}`} />
       {project ? (
         <main className="workbench">
-          <Sidebar project={project} />
+          {!embed && <Sidebar project={project} />}
           <section className="stage">
             <div className="stage-canvas">
               <Viewport project={project} />
             </div>
-            <Toolbar />
-            <ViewCube />
+            {embed ? (
+              <button type="button" className="embed-exit" onClick={toggleEmbed} title="Leave viewport mode (V)">
+                <Minimize2 size={13} />
+                <span className="mono">V</span>
+              </button>
+            ) : (
+              <>
+                <Toolbar />
+                <ViewCube />
+              </>
+            )}
             <Diagnostics project={project} />
             {tool === 'measure' && (
               <div className="tool-hint mono">
                 {pending ? 'pick the second point' : 'pick the first point, vertices snap'}
               </div>
             )}
-            <TitleBlock project={project} />
+            {!embed && <TitleBlock project={project} />}
             <Console project={project} />
-            <Timeline project={project} />
+            {!embed && <Timeline project={project} />}
           </section>
         </main>
       ) : (

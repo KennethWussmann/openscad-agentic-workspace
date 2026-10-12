@@ -1,5 +1,5 @@
 import type { DefineValue, ParamDef, ProjectState } from '@scad/core/protocol'
-import { AlertTriangle, Eye, EyeOff, RotateCcw, Send } from 'lucide-react'
+import { AlertTriangle, Eye, EyeOff, PanelLeftClose, PanelLeftOpen, RotateCcw, Send } from 'lucide-react'
 import { useState } from 'react'
 import { clearTweak, sendProposal } from '../api.ts'
 import { useStore } from '../store.ts'
@@ -246,9 +246,42 @@ const Params = ({ project }: { project: ProjectState }) => {
   )
 }
 
-export const Sidebar = ({ project }: { project: ProjectState }) => (
-  <aside className="sidebar">
-    <Parts project={project} />
-    <Params project={project} />
-  </aside>
-)
+const Rail = ({ project }: { project: ProjectState }) => {
+  const toggleSidebar = useStore((s) => s.toggleSidebar)
+  const changed = useStore((s) => Object.keys(s.edits).length)
+  const params = project.render?.params.length ?? 0
+  return (
+    <button type="button" className="sidebar-rail" onClick={toggleSidebar} title="Show panel (B)">
+      <PanelLeftOpen size={15} />
+      <span className="rail-label">
+        Parts <em className="mono">{project.parts.length}</em>
+      </span>
+      <span className="rail-label">
+        Parameters <em className="mono">{params}</em>
+      </span>
+      {changed > 0 && <span className="rail-badge mono">{changed}</span>}
+    </button>
+  )
+}
+
+export const Sidebar = ({ project }: { project: ProjectState }) => {
+  const open = useStore((s) => s.sidebar)
+  const toggleSidebar = useStore((s) => s.toggleSidebar)
+  return (
+    <aside className={`sidebar${open ? '' : ' is-collapsed'}`}>
+      <div className="sidebar-body" inert={!open}>
+        <header className="sidebar-head">
+          <span className="mono">Inspector</span>
+          <button type="button" className="icon-btn" onClick={toggleSidebar} title="Hide panel (B)">
+            <PanelLeftClose size={14} />
+          </button>
+        </header>
+        <Parts project={project} />
+        <Params project={project} />
+      </div>
+      <div className="sidebar-rail-wrap" inert={open}>
+        <Rail project={project} />
+      </div>
+    </aside>
+  )
+}

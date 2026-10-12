@@ -46,6 +46,8 @@ export type Store = {
   bounds: [Vec3, Vec3] | null
   help: boolean
   console: boolean
+  sidebar: boolean
+  embed: boolean
   setProjects: (p: ProjectSummary[]) => void
   setProject: (p: ProjectState | null, error?: string | null) => void
   selectProject: (id: string | null) => void
@@ -66,9 +68,21 @@ export type Store = {
   setBounds: (b: [Vec3, Vec3] | null) => void
   toggleHelp: () => void
   toggleConsole: () => void
+  toggleSidebar: () => void
+  toggleEmbed: () => void
 }
 
 const DISPLAY_KEY = 'scad-display'
+const SIDEBAR_KEY = 'scad-sidebar'
+
+const setParam = (name: string, value: string | null) => {
+  const url = new URL(location.href)
+  if (value === null) url.searchParams.delete(name)
+  else url.searchParams.set(name, value)
+  history.replaceState(null, '', url)
+}
+
+const params = new URLSearchParams(location.search)
 
 const loadDisplay = (): Display => {
   const base: Display = {
@@ -91,7 +105,7 @@ let measureId = 0
 
 export const useStore = create<Store>((set, get) => ({
   projects: [],
-  projectId: new URLSearchParams(location.search).get('project'),
+  projectId: params.get('project'),
   project: null,
   error: null,
   rendering: { preview: false, tweak: false },
@@ -109,6 +123,8 @@ export const useStore = create<Store>((set, get) => ({
   bounds: null,
   help: false,
   console: false,
+  sidebar: localStorage.getItem(SIDEBAR_KEY) !== 'closed',
+  embed: params.has('embed') && params.get('embed') !== '0',
   setProjects: (projects) => set({ projects }),
   setProject: (project, error = null) => {
     const prev = get().project
@@ -130,10 +146,7 @@ export const useStore = create<Store>((set, get) => ({
     }
   },
   selectProject: (projectId) => {
-    const url = new URL(location.href)
-    if (projectId) url.searchParams.set('project', projectId)
-    else url.searchParams.delete('project')
-    history.replaceState(null, '', url)
+    setParam('project', projectId)
     set({ projectId })
   },
   setRendering: (kind, value) => set((s) => ({ rendering: { ...s.rendering, [kind]: value } })),
@@ -173,4 +186,14 @@ export const useStore = create<Store>((set, get) => ({
   },
   toggleHelp: () => set((s) => ({ help: !s.help })),
   toggleConsole: () => set((s) => ({ console: !s.console })),
+  toggleSidebar: () =>
+    set((s) => {
+      localStorage.setItem(SIDEBAR_KEY, s.sidebar ? 'closed' : 'open')
+      return { sidebar: !s.sidebar }
+    }),
+  toggleEmbed: () =>
+    set((s) => {
+      setParam('embed', s.embed ? null : '1')
+      return { embed: !s.embed }
+    }),
 }))

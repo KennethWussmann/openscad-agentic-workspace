@@ -122,6 +122,8 @@ const SHORTCUTS: [string, string][] = [
   ['M', 'Measure (click two points)'],
   ['Esc', 'Cancel / leave tool'],
   ['[ ]', 'Previous / next version'],
+  ['B', 'Side panel'],
+  ['V', 'Viewport only (?embed=1)'],
   ['C', 'Console'],
   ['?', 'This help'],
 ]
