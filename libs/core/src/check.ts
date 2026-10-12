@@ -4,10 +4,12 @@ import type {
   BodiesCheck,
   Body,
   CheckRegion,
-  CheckSettings,
   CheckStatus,
+  Island,
+  IslandCheck,
   ManifoldCheck,
   PartCheck,
+  PrintProfile,
   RegionCheck,
   Vec3,
 } from './protocol.ts'
@@ -24,6 +26,7 @@ const FOLD_CELL = 1
 const ANGLE_TOLERANCE = 0.01
 const THICKNESS_TOLERANCE = 1e-3
 const FLOAT_TOLERANCE = 0.05
+const ISLAND_TOLERANCE = 0.01
 const MAX_REGIONS = 20
 export const WORST_PATCH_AREA = 0.1
 const MAX_SAMPLES = 10
@@ -46,6 +49,11 @@ const boxOf = (min: ArrayLike<number>, max: ArrayLike<number>): BBox => ({
   min: roundVec(min),
   max: roundVec(max),
   size: roundVec([max[0] - min[0], max[1] - min[1], max[2] - min[2]]),
+})
+
+export const wallLimits = (profile: PrintProfile) => ({
+  fail: profile.process === 'fdm' ? profile.nozzle : profile.minFeature,
+  warn: profile.minWall,
 })
 
 export const overhangAngle = (nz: number) => (nz >= 0 ? 0 : (Math.asin(Math.min(1, -nz)) * 180) / Math.PI)
@@ -446,6 +454,67 @@ const findBodies = (topo: Topology) => {
   )
 }
 
+export type IslandRegion = Island & { triangles: number[] }
+
+export const findIslands = (topo: Topology, bedZ: number): IslandRegion[] => {
+  const { points, tris, vertexTris } = topo
+  const count = points.length / 3
+  const seen = new Uint8Array(count)
+  const out: IslandRegion[] = []
+  for (let seed = 0; seed < count; seed++) {
+    if (seen[seed] || !vertexTris[seed].length) continue
+    seen[seed] = 1
+    const z0 = points[3 * seed + 2]
+    if (z0 <= bedZ + BED_TOLERANCE) continue
+    const plateau = [seed]
+    let minimum = true
+    for (let i = 0; i < plateau.length; i++) {
+      const v = plateau[i]
+      for (const t of vertexTris[v]) {
+        if (collapsed(topo, t)) continue
+        for (let k = 0; k < 3; k++) {
+          const u = tris[3 * t + k]
+          const dz = points[3 * u + 2] - z0
+          if (dz < -ISLAND_TOLERANCE) minimum = false
+          else if (dz <= ISLAND_TOLERANCE && !seen[u]) {
+            seen[u] = 1
+            plateau.push(u)
+          }
+        }
+      }
+    }
+    if (!minimum) continue
+    const members = new Set(plateau)
+    const triangles = [...new Set(plateau.flatMap((v) => vertexTris[v]))].filter((t) => !collapsed(topo, t))
+    let facing = 0
+    let area = 0
+    for (const t of triangles) {
+      facing += topo.areas[t] * topo.normals[3 * t + 2]
+      if (members.has(tris[3 * t]) && members.has(tris[3 * t + 1]) && members.has(tris[3 * t + 2]))
+        area += topo.areas[t]
+    }
+    if (facing >= 0) continue
+    const min = [Infinity, Infinity, Infinity]
+    const max = [-Infinity, -Infinity, -Infinity]
+    const center = [0, 0, 0]
+    for (const v of plateau)
+      for (let j = 0; j < 3; j++) {
+        const x = points[3 * v + j]
+        center[j] += x / plateau.length
+        min[j] = Math.min(min[j], x)
+        max[j] = Math.max(max[j], x)
+      }
+    out.push({
+      center: roundVec(center),
+      bbox: boxOf(min, max),
+      height: round(z0 - bedZ, 3),
+      area: round(area, 2),
+      triangles,
+    })
+  }
+  return out.sort((a, b) => a.height - b.height)
+}
+
 const checkBed = (bbox: BBox | null, bed: Vec3): BedCheck => {
   const size: Vec3 = bbox?.size ?? [0, 0, 0]
   const within = (x: number, y: number) => x <= bed[0] + 1e-6 && y <= bed[1] + 1e-6 && size[2] <= bed[2] + 1e-6
@@ -461,7 +530,7 @@ export type MeshAnalysis = Omit<PartCheck, 'id' | 'label' | 'durationMs'>
 export const analyzeMesh = (
   positions: ArrayLike<number>,
   index: ArrayLike<number> | null,
-  settings: CheckSettings,
+  profile: PrintProfile,
 ): MeshAnalysis => {
   const topo = buildTopology(positions, index)
   const n = topo.areas.length
@@ -493,39 +562,57 @@ export const analyzeMesh = (
     inverted,
   }
 
-  const angles = overhangField(topo.points, topo.tris, bedZ)
-  const steep = new Uint8Array(n)
-  for (let t = 0; t < n; t++) steep[t] = angles[t] > settings.overhangAngle + ANGLE_TOLERANCE ? 1 : 0
-  const over = groupRegions(topo, steep, angles, 'max', settings.minRegionArea)
-  const overhangs: RegionCheck = { status: over.regions.length ? 'warn' : 'pass', ...over }
+  let overhangs: RegionCheck | null = null
+  let islands: IslandCheck | null = null
+  if (profile.process === 'fdm') {
+    const angles = overhangField(topo.points, topo.tris, bedZ)
+    const steep = new Uint8Array(n)
+    for (let t = 0; t < n; t++) steep[t] = angles[t] > profile.overhangAngle + ANGLE_TOLERANCE ? 1 : 0
+    const over = groupRegions(topo, steep, angles, 'max', profile.minRegionArea)
+    overhangs = { status: over.regions.length ? 'warn' : 'pass', ...over }
+  } else {
+    const found = findIslands(topo, bedZ)
+    islands = {
+      status: found.length ? 'warn' : 'pass',
+      count: found.length,
+      islands: found.slice(0, MAX_REGIONS).map(({ triangles: _, ...island }) => island),
+    }
+  }
 
+  const limits = wallLimits(profile)
   const thickness = thicknessField(topo)
   const thin = new Uint8Array(n)
-  for (let t = 0; t < n; t++) thin[t] = thickness[t] < settings.minWall - THICKNESS_TOLERANCE ? 1 : 0
-  const slim = groupRegions(topo, thin, thickness, 'min', settings.minRegionArea)
+  for (let t = 0; t < n; t++) thin[t] = thickness[t] < limits.warn - THICKNESS_TOLERANCE ? 1 : 0
+  const slim = groupRegions(topo, thin, thickness, 'min', profile.minRegionArea)
   const walls: RegionCheck = {
-    status: slim.worst === null ? 'pass' : slim.worst < settings.nozzle - THICKNESS_TOLERANCE ? 'fail' : 'warn',
+    status: slim.worst === null ? 'pass' : slim.worst < limits.fail - THICKNESS_TOLERANCE ? 'fail' : 'warn',
     ...slim,
   }
 
   const floating = solids.filter((b) => b.bbox.min[2] > bedZ + FLOAT_TOLERANCE)
-  const small = solids.filter((b) => Math.max(...b.bbox.size) < settings.minWall)
+  const small = solids.filter((b) => Math.max(...b.bbox.size) < limits.warn)
+  const voids = bodies.length - solids.length
   const bodyCheck: BodiesCheck = {
-    status: floating.length || small.length ? 'warn' : 'pass',
+    status: floating.length || small.length || (profile.process === 'resin' && voids) ? 'warn' : 'pass',
     bodies: solids.length,
-    voids: bodies.length - solids.length,
+    voids,
     floating: floating.slice(0, MAX_REGIONS),
     small: small.slice(0, MAX_REGIONS),
   }
 
-  const bed = checkBed(bbox, settings.bed)
+  const bed = checkBed(bbox, profile.bed)
   return {
-    status: worstStatus([manifold.status, bed.status, overhangs.status, walls.status, bodyCheck.status]),
+    status: worstStatus(
+      [manifold.status, bed.status, overhangs?.status, islands?.status, walls.status, bodyCheck.status].filter(
+        (x): x is CheckStatus => x !== undefined,
+      ),
+    ),
     triangles: n,
     bbox,
     manifold,
     bed,
     overhangs,
+    islands,
     walls,
     bodies: bodyCheck,
   }

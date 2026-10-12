@@ -90,13 +90,33 @@ Rules behind it:
 
 ## Printability defaults
 
-Unless the brief says otherwise, assume FDM with a 0.4 mm nozzle. `printer` and `check` in `config.yaml` hold the bed size, nozzle and thresholds that `pnpm scad check` and the viewer overlays use. Set them per project when the user names a printer.
+Design for the active printer profile, never for assumed numbers. Run `pnpm scad printer <id>` before writing geometry that depends on the process and again when the project's `print` settings change. It prints the process (`fdm` or `resin`), bed, nozzle or pixel size, layer height, wall limits and tolerances that `pnpm scad check` and the viewer use.
 
+The profile comes from `config.yaml`:
+- `printers.<name>` describes each machine.
+- `print` selects what to design for: `printer`, `nozzle` (fdm only, one of the printer's `nozzles`) and `layerHeight`.
+- A project overrides either in its own `config.yaml`, e.g. `print: { nozzle: 0.6 }`.
+- When the user changes the nozzle or printer, change `print` in the project config, not the printer definition, then re-check the parameters below.
 
-- Walls >= 1.2 mm (3 perimeters), structural >= 2 mm. Floors/roofs >= 0.8 mm.
-- Clearance between mating printed parts: 0.2 mm tight press, 0.3 mm sliding, 0.4-0.5 mm loose. Holes print undersized: add 0.2-0.3 mm to hole diameters for screws and pins.
-- Overhangs up to 45 degrees print without support; use chamfers instead of fillets on downward-facing edges, teardrop or flat-topped horizontal holes.
-- Text: >= 1 mm stroke, >= 0.6 mm relief.
+Carry the profile into the model so it stays tweakable:
+- Put tolerances into the `/* [Print] */` group as parameters whose defaults are the profile values: `clearance = 0.3; // sliding fit from the profile`, `press_fit`, `hole_extra`. The profile's `tolerances` are per side for mating parts (`press`, `sliding`, `loose`); `hole` is added to the diameter of holes for screws and pins.
+- Derive minimum thicknesses from profile values captured as parameters (`nozzle = 0.4;`, `wall = 3 * nozzle;`) instead of literals, and guard them with `assert`.
+- Note the profile you designed for (printer, process, nozzle or pixel, layer height) under Decisions in `brief.md`. If the profile changes later, update these parameters and say so.
+
+FDM (`process: fdm`):
+- Walls in multiples of the nozzle line width: >= 3 x nozzle for normal walls, >= 5 x nozzle structural. FAIL under one nozzle width, WARN under `minWall` (default 2 x nozzle).
+- Floors and roofs >= 4 layers (4 x `layerHeight`). Heights of steps and text relief in multiples of the layer height.
+- Overhangs up to `overhangAngle` (default 45 deg) print without support; use chamfers instead of fillets on downward-facing edges, teardrop or flat-topped horizontal holes.
+- Text: >= 2.5 x nozzle stroke, >= 3 layers relief.
+
+Resin (`process: resin`, SLA, MSLA, DLP):
+- Walls >= `minWall` (WARN under it). Details, pins, embossed text strokes and gaps >= `minFeature` (FAIL under it). Nothing below 2 x `pixel` resolves.
+- There is no overhang angle; resin needs supports wherever a layer starts unsupported. `check` reports these as islands. Reduce them with chamfers or cones that grow from below, or accept that the slicer adds supports and say so.
+- Hollow parts: an enclosed void traps uncured resin and can crack the print. Add at least one drain hole of `drainHole` mm near the build plate side and a vent hole at the far end, or keep the part solid. Avoid open cavities facing the plate (suction cups); give them a vent.
+- Large flat faces parallel to the plate cause peel forces; mention that the part is usually printed tilted with supports in the slicer.
+- Tolerances are much tighter than FDM; take them from the profile.
+
+Both:
 - Metric screw reference (clearance hole / head diameter / head height): M2 2.4/3.8/2, M2.5 2.9/4.5/2.5, M3 3.4/5.5/3, M4 4.5/7/4, M5 5.5/8.5/5. Heat-set inserts M3: about 4.0-4.2 mm hole, 5-6 mm deep. Hex nut M3: 5.5 mm across flats, 2.4 mm thick (model the hole at flats + 0.3 mm, `$fn = 6`, rotated so flats are parallel to the build plate edges where it matters).
 - State the assumptions you made in `brief.md`.
 
@@ -109,13 +129,14 @@ What `pnpm scad check` reports and the usual fix. Confirm the location with a se
 | manifold: open or non-manifold edges | `polyhedron()` with wrong or missing faces; two solids touching along an edge or a point | Fix the face list and winding; make touching solids overlap by `eps` or separate them |
 | manifold: flipped faces / inside out | `polyhedron()` faces wound the wrong way | Reverse the face order (OpenSCAD wants faces clockwise seen from outside) |
 | manifold: folded edges (fins, flaps) | A face ends exactly on another face, coincident faces in `difference()`, a sweep ending on the face it joins | Extend the cutter or the sweep past the face by `eps` or about 1 deg; avoid coplanar faces in booleans |
-| bed: does not fit | Part larger than `printer.bed` | Rotate the print orientation, split into parts with joints, or ask the user to scale |
+| bed: does not fit | Part larger than the active printer's `bed` | Rotate the print orientation, split into parts with joints, or ask the user to scale |
 | bed: lowest point not at z = 0 | Model offset or a feature below the base | Translate the part onto the bed in its print orientation |
 | overhangs | Fillets on downward edges, horizontal holes, ceilings, undercuts | 45 deg chamfers, teardrop or flat-topped holes, reorient the part, split it, or tell the user supports are needed |
 | walls: thin (WARN or FAIL) | Wall parameter too small, derived values going negative, a feature tapering to a point | Raise the parameter, add `assert(wall >= ...)` for derived thickness, end tapers in a flat of at least the nozzle width or a round |
 | bodies: floating | Feature not unioned with the body, or sitting above it by rounding | Overlap it with the body by `eps`, or move it onto the bed or into its own part |
 | bodies: small | Leftover slivers from `difference()` | Extend the cutter by `eps` so it cuts through completely |
-| bodies: enclosed void | Hollow inside a solid | Intended for some prints; otherwise remove it or tell the user it will be filled with infill or trap support |
+| bodies: enclosed void | Hollow inside a solid | FDM: intended for some prints; otherwise remove it or tell the user it will be filled with infill or trap support. Resin: add drain and vent holes of at least `drainHole` mm, or make it solid |
+| islands (resin) | Downward tips, floating features, flat undersides starting mid-air, horizontal holes with flat tops | Add a chamfer or cone that grows from below, move the feature onto the body, or tell the user the slicer will add supports there |
 
 ## Multi-part projects
 

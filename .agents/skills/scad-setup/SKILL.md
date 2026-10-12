@@ -50,6 +50,7 @@ If OpenSCAD is not found:
 - A recent development snapshot (2024 or newer) is required for the Manifold backend and colored 3MF. Old stable 2021.01 builds are rejected by doctor. Downloads: https://openscad.org/downloads.html#snapshots
 - Typical installs: macOS `brew install --cask openscad@snapshot` or the DMG; Windows the snapshot installer or `winget install OpenSCAD.OpenSCAD`; Linux the AppImage, the flatpak `org.openscad.OpenSCAD` or the snap.
 - A command with arguments is configured as a list, e.g. `path: [flatpak, run, org.openscad.OpenSCAD]`. An AppImage path works as a plain string.
+- `FAIL config` or `FAIL projects` with a message such as `print.printer: "x" is not defined in printers`: the root or a project `config.yaml` does not match the schema. Fix the named key using `config.example.yaml` as the reference. Ask the user for printer data you do not know (process, build volume, nozzles or pixel size) instead of guessing.
 - Headless Linux (CI, SSH): model renders work, but PNG sheets need an X server. Wrap commands in `xvfb-run` or set `render.sheet: false`.
 
 ## 6. Optional checks

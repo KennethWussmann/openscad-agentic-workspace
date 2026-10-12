@@ -40,6 +40,18 @@ it('fails with usage for unknown commands and flags', () => {
   expect(scad('list', '--bogus').code).toBe(1)
 })
 
+it('shows the active printer and validates project configs in doctor', () => {
+  const shown = scad('printer')
+  expect(shown.stdout).toContain('Designing for default (fdm), bed 256 x 256 x 256 mm')
+  expect(shown.stdout).toContain('tolerances: press 0.2, sliding 0.3, loose 0.45 mm per side')
+  mkdirSync(path.join(workspace, 'broken'), { recursive: true })
+  writeFileSync(path.join(workspace, 'broken', 'config.yaml'), 'name: Broken\nprint:\n  printer: nope\n')
+  const doctor = scad('doctor')
+  expect(doctor.stdout).toMatch(/FAIL {2}projects/)
+  expect(doctor.stdout).toContain('print.printer: "nope" is not defined in printers (default)')
+  rmSync(path.join(workspace, 'broken'), { recursive: true, force: true })
+})
+
 it('requires a project for check', () => {
   const r = scad('check')
   expect(r.code).toBe(2)
@@ -145,7 +157,8 @@ describe.skipIf(!hasOpenscad)('with OpenSCAD', () => {
     expect(check.data.parts.map((p) => [p.id, p.manifold.status])).toEqual([['main', 'pass']])
     expect(existsSync(path.join(workspace, 'clip', 'preview', 'check.json'))).toBe(true)
     const text = scad('check', 'clip').stdout
-    expect(text).toContain('PASS  clip  bed 256 x 256 x 256 mm, nozzle 0.4 mm')
+    expect(text).toContain('PASS  clip  default (fdm), bed 256 x 256 x 256 mm, layer 0.2 mm, nozzle 0.4 mm')
+    expect(text).toMatch(/PASS {2}overhangs/)
     expect(text).toMatch(/PASS {2}manifold {3}watertight/)
     expect(scad('status', 'clip').stdout).toContain('check: pass')
     const version = json<{ id: string; check: { status: string; message: string | null } }>(
@@ -173,5 +186,22 @@ describe.skipIf(!hasOpenscad)('with OpenSCAD', () => {
     writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), 'cube([30, 30, 2]);\n')
     expect(json<{ status: string }>('render', 'clip', '--no-sheet').data.status).toBe('ok')
     expect(scad('export', 'clip', '--formats', 'stl').stdout).toContain('the last check is older than the render')
+  })
+
+  it('checks islands and trapped resin instead of overhangs for a resin printer', () => {
+    writeFileSync(
+      path.join(workspace, 'clip', 'src', 'main.scad'),
+      'difference() { cube(20); translate([2, 2, 2]) cube(16); }\ntranslate([30, 0, 5]) cube(5);\n',
+    )
+    writeFileSync(
+      path.join(workspace, 'clip', 'config.yaml'),
+      'name: Cable Clip\nprint:\n  printer: mars\nprinters:\n  mars: { process: resin, bed: [143, 89, 175], pixel: 0.035 }\n',
+    )
+    const check = scad('check', 'clip')
+    expect(check.code).toBe(0)
+    expect(check.stdout).toContain('WARN  clip  mars (resin), bed 143 x 89 x 175 mm')
+    expect(check.stdout).not.toContain('overhangs')
+    expect(check.stdout).toMatch(/WARN {2}islands {4}1 island\(s\)/)
+    expect(check.stdout).toContain('1 enclosed void(s) trapping resin: add drain holes of at least 2.5 mm')
   })
 })

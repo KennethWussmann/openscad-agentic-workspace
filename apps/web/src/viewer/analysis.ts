@@ -1,5 +1,6 @@
-import { BED_FACE, overhangField } from '@scad/core/check'
-import type { CheckSettings } from '@scad/core/protocol'
+import { BED_FACE, findIslands, overhangField, wallLimits } from '@scad/core/check'
+import type { FdmProfile, PrintProfile } from '@scad/core/protocol'
+import { buildTopology } from '@scad/core/surface'
 import { useEffect, useMemo, useState } from 'react'
 import { type BufferGeometry, Color, Float32BufferAttribute } from 'three'
 import type { AnalysisMode, AnalysisSummary } from '../store.ts'
@@ -65,16 +66,17 @@ export const overhangColor = (angle: number, threshold: number) => {
   return ramp(HEAT.amber, HEAT.red, (angle - threshold) / Math.max(1, 90 - threshold))
 }
 
-export const wallColor = (thickness: number, s: CheckSettings) => {
-  if (thickness <= s.nozzle) return HEAT.red
-  if (thickness <= s.minWall) return ramp(HEAT.red, HEAT.amber, (thickness - s.nozzle) / (s.minWall - s.nozzle || 1))
-  if (thickness <= 2 * s.minWall) return ramp(HEAT.amber, HEAT.neutral, (thickness - s.minWall) / s.minWall)
+export const wallColor = (thickness: number, s: PrintProfile) => {
+  const { fail, warn } = wallLimits(s)
+  if (thickness <= fail) return HEAT.red
+  if (thickness <= warn) return ramp(HEAT.red, HEAT.amber, (thickness - fail) / (warn - fail || 1))
+  if (thickness <= 2 * warn) return ramp(HEAT.amber, HEAT.neutral, (thickness - warn) / warn)
   return HEAT.neutral
 }
 
 type Result = { heat: Heat; summary: AnalysisSummary }
 
-const overhangs = (models: LoadedModel[], s: CheckSettings): Result => {
+const overhangs = (models: LoadedModel[], s: FdmProfile): Result => {
   const heat: Heat = {}
   let area = 0
   let extreme: number | null = null
@@ -95,11 +97,63 @@ const overhangs = (models: LoadedModel[], s: CheckSettings): Result => {
   return { heat, summary: { mode: 'overhangs', busy: false, area, extreme } }
 }
 
+const concatenated = (model: LoadedModel) => {
+  const flats = model.meshes.map((m) => flatOf(m.geometry).getAttribute('position').array)
+  const positions = new Float32Array(flats.reduce((n, a) => n + a.length, 0))
+  let offset = 0
+  for (const a of flats) {
+    positions.set(a, offset)
+    offset += a.length
+  }
+  return positions
+}
+
+type IslandMask = { mask: Uint8Array; count: number }
+
+const MAX_CACHE = 16
+
+const islandCache = new Map<string, IslandMask>()
+
+const islandMask = (model: LoadedModel): IslandMask => {
+  const hit = islandCache.get(model.key)
+  if (hit) return hit
+  const positions = concatenated(model)
+  const mask = new Uint8Array(positions.length / 9)
+  const found = findIslands(buildTopology(positions, null), model.box.min.z)
+  for (const island of found) for (const t of island.triangles) mask[t] = 1
+  const result = { mask, count: found.length }
+  islandCache.set(model.key, result)
+  if (islandCache.size > MAX_CACHE) {
+    const oldest = islandCache.keys().next().value
+    if (oldest) islandCache.delete(oldest)
+  }
+  return result
+}
+
+const islands = (models: LoadedModel[]): Result => {
+  const heat: Heat = {}
+  let count = 0
+  for (const model of models) {
+    const { mask, count: found } = islandMask(model)
+    count += found
+    const bedZ = model.box.min.z
+    let start = 0
+    for (const mesh of model.meshes) {
+      const offset = start
+      const angles = overhangField(flatOf(mesh.geometry).getAttribute('position').array, null, bedZ)
+      heat[mesh.id] = paint(mesh.geometry, (t) =>
+        mask[offset + t] ? HEAT.red : angles[t] === BED_FACE ? HEAT.bed : HEAT.neutral,
+      )
+      start += triangleCount(mesh.geometry)
+    }
+  }
+  return { heat, summary: { mode: 'islands', busy: false, area: 0, extreme: count || null } }
+}
+
 let worker: Worker | null = null
 let nextId = 0
 const waiting = new Map<number, (t: Float32Array) => void>()
 const thicknessCache = new Map<string, Promise<Float32Array>>()
-const MAX_CACHE = 16
 
 const measure = (model: LoadedModel) => {
   const hit = thicknessCache.get(model.key)
@@ -111,13 +165,7 @@ const measure = (model: LoadedModel) => {
       waiting.delete(e.data.id)
     }
   }
-  const flats = model.meshes.map((m) => flatOf(m.geometry).getAttribute('position').array)
-  const positions = new Float32Array(flats.reduce((n, a) => n + a.length, 0))
-  let offset = 0
-  for (const a of flats) {
-    positions.set(a, offset)
-    offset += a.length
-  }
+  const positions = concatenated(model)
   const id = ++nextId
   const job = new Promise<Float32Array>((resolve) => waiting.set(id, resolve))
   worker.postMessage({ id, positions }, [positions.buffer])
@@ -129,11 +177,12 @@ const measure = (model: LoadedModel) => {
   return job
 }
 
-const walls = (models: LoadedModel[], fields: Record<string, Float32Array>, s: CheckSettings): Result => {
+const walls = (models: LoadedModel[], fields: Record<string, Float32Array>, s: PrintProfile): Result => {
   const heat: Heat = {}
   let area = 0
   let extreme: number | null = null
   let busy = false
+  const limits = wallLimits(s)
   for (const model of models) {
     const field = fields[model.key]
     if (!field) {
@@ -147,7 +196,7 @@ const walls = (models: LoadedModel[], fields: Record<string, Float32Array>, s: C
       const offset = start
       areas.forEach((a, t) => {
         const th = field[offset + t]
-        if (th >= s.minWall) return
+        if (th >= limits.warn) return
         area += a
         extreme = Math.min(extreme ?? Infinity, th)
       })
@@ -161,7 +210,7 @@ const walls = (models: LoadedModel[], fields: Record<string, Float32Array>, s: C
 export const useAnalysis = (
   models: Record<string, LoadedModel>,
   visible: string[],
-  settings: CheckSettings,
+  settings: PrintProfile,
   mode: AnalysisMode | null,
 ): Result | null => {
   const shown = useMemo(
@@ -181,7 +230,7 @@ export const useAnalysis = (
     }
   }, [mode, shown])
   const result = useMemo(() => {
-    if (mode === 'overhangs') return overhangs(shown, settings)
+    if (mode === 'overhangs') return settings.process === 'fdm' ? overhangs(shown, settings) : islands(shown)
     if (mode === 'walls') return walls(shown, fields, settings)
     return null
   }, [mode, shown, fields, settings])

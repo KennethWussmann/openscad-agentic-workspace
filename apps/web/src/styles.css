@@ -1316,6 +1316,26 @@ input[type="range"]::-moz-range-thumb {
   color: var(--dim);
 }
 
+.dim-tag.is-over {
+  color: #ff3b30;
+  border-color: #ff3b30;
+}
+
+.bed-tag {
+  font-family: var(--mono);
+  font-stretch: 85%;
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  color: var(--dim);
+  transform: translate(2px, 4px);
+}
+
+.bed-tag.is-over {
+  color: #ff3b30;
+}
+
 .axis-tag {
   font-weight: 700;
 }

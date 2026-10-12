@@ -1,3 +1,4 @@
+import { wallLimits } from '@scad/core/check'
 import type { Diagnostic, ProjectState } from '@scad/core/protocol'
 import { AlertOctagon, X } from 'lucide-react'
 import { useStore } from '../store.ts'
@@ -112,28 +113,38 @@ const css = (c: { getStyle: () => string }) => c.getStyle()
 export const AnalysisLegend = ({ project }: { project: ProjectState }) => {
   const analysis = useStore((s) => s.analysis)
   if (!analysis) return null
-  const s = project.checkSettings
-  const overhang = analysis.mode === 'overhangs'
-  const stops = overhang
-    ? [`${css(HEAT.amber)} 0%`, `${css(HEAT.red)} 100%`]
-    : [`${css(HEAT.red)} 0%`, `${css(HEAT.amber)} 50%`, `${css(HEAT.neutral)} 100%`]
-  const ticks = overhang
-    ? [`${s.overhangAngle}\u00b0`, '90\u00b0']
-    : [`${fmt(s.nozzle)}`, `${fmt(s.minWall)}`, `${fmt(2 * s.minWall)} mm`]
+  const s = project.profile
+  const limits = wallLimits(s)
+  const mode = analysis.mode
+  const stops =
+    mode === 'walls'
+      ? [`${css(HEAT.red)} 0%`, `${css(HEAT.amber)} 50%`, `${css(HEAT.neutral)} 100%`]
+      : [`${css(HEAT.amber)} 0%`, `${css(HEAT.red)} 100%`]
+  const ticks =
+    mode === 'walls'
+      ? [`${fmt(limits.fail)}`, `${fmt(limits.warn)}`, `${fmt(2 * limits.warn)} mm`]
+      : s.process === 'fdm'
+        ? [`${s.overhangAngle}\u00b0`, '90\u00b0']
+        : ['unsupported start points']
   const stat = analysis.busy
     ? 'measuring...'
     : analysis.extreme === null
-      ? overhang
-        ? `nothing past ${s.overhangAngle}\u00b0`
-        : `nothing under ${fmt(s.minWall)} mm`
-      : overhang
-        ? `${fmt(analysis.area)} mm\u00b2, up to ${fmt(analysis.extreme)}\u00b0`
-        : `${fmt(analysis.area)} mm\u00b2 under ${fmt(s.minWall)}, min ${fmt(analysis.extreme)} mm`
+      ? mode === 'walls'
+        ? `nothing under ${fmt(limits.warn)} mm`
+        : s.process === 'fdm'
+          ? `nothing past ${s.overhangAngle}\u00b0`
+          : 'no islands'
+      : mode === 'walls'
+        ? `${fmt(analysis.area)} mm\u00b2 under ${fmt(limits.warn)}, min ${fmt(analysis.extreme)} mm`
+        : mode === 'islands'
+          ? `${analysis.extreme} island${analysis.extreme === 1 ? '' : 's'} need supports`
+          : `${fmt(analysis.area)} mm\u00b2, up to ${fmt(analysis.extreme)}\u00b0`
+  const title = mode === 'walls' ? 'Wall thickness' : mode === 'islands' ? 'Islands' : 'Overhang from vertical'
   return (
-    <div className={`legend ${overhang ? 'is-overhang' : 'is-walls'}`}>
+    <div className={`legend ${mode === 'walls' ? 'is-walls' : 'is-overhang'}`}>
       <header>
-        <span className="tb-label">{overhang ? 'Overhang from vertical' : 'Wall thickness'}</span>
-        <span className="mono">{overhang ? 'H' : 'T'}</span>
+        <span className="tb-label">{title}</span>
+        <span className="mono">{mode === 'walls' ? 'T' : 'H'}</span>
       </header>
       <div className="legend-bar" style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} />
       <div className="legend-ticks mono">
@@ -141,7 +152,7 @@ export const AnalysisLegend = ({ project }: { project: ProjectState }) => {
           <span key={t}>{t}</span>
         ))}
       </div>
-      {overhang && (
+      {mode !== 'walls' && (
         <div className="legend-key mono">
           <i style={{ background: css(HEAT.bed) }} /> on the bed, ignored
         </div>
@@ -164,7 +175,7 @@ const SHORTCUTS: [string, string][] = [
   ['W', 'Wireframe'],
   ['G', 'Build plate'],
   ['D', 'Bounding box'],
-  ['H', 'Overhang heatmap'],
+  ['H', 'Overhangs (FDM) / islands (resin)'],
   ['T', 'Wall thickness'],
   ['S', 'Section'],
   ['M', 'Measure (click two points)'],

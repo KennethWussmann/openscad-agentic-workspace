@@ -163,10 +163,10 @@ export const Viewport = ({ project }: ViewportProps) => {
     setBounds(box.isEmpty() ? null : [box.min.toArray(), box.max.toArray()])
   }, [box, setBounds])
 
-  const settingsKey = JSON.stringify(project.checkSettings)
-  const checkSettings = useMemo(() => JSON.parse(settingsKey) as ProjectState['checkSettings'], [settingsKey])
+  const profileKey = JSON.stringify(project.profile)
+  const profile = useMemo(() => JSON.parse(profileKey) as ProjectState['profile'], [profileKey])
   const mode = display.overhangs ? 'overhangs' : display.walls ? 'walls' : null
-  const analysis = useAnalysis(models, visible, checkSettings, mode)
+  const analysis = useAnalysis(models, visible, profile, mode)
   const setAnalysis = useStore((s) => s.setAnalysis)
   useEffect(() => setAnalysis(analysis?.summary ?? null), [analysis, setAnalysis])
 
@@ -228,7 +228,7 @@ export const Viewport = ({ project }: ViewportProps) => {
     >
       <CameraRig />
       <CaptureBridge />
-      {display.grid && <BuildPlate extent={extent} />}
+      {display.grid && <BuildPlate bed={profile.bed} printer={profile.printer} box={box} extent={extent} />}
       <ModelView
         models={models}
         ghosts={ghosts}
@@ -238,7 +238,7 @@ export const Viewport = ({ project }: ViewportProps) => {
         heat={analysis?.heat}
         onPick={onPick}
       />
-      {display.dims && <Dimensions box={box} />}
+      {display.dims && <Dimensions box={box} bed={profile.bed} />}
       {section.enabled && section.axis !== 'free' && <SectionOutline extent={extent} />}
       {section.enabled && section.axis === 'free' && <FreeGizmo extent={extent} />}
       <Measurements measures={measures} pending={pending} />

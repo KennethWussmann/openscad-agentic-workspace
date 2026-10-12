@@ -3,11 +3,11 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   addMissingConfigSections,
-  checkSettings,
   deepMerge,
   deleteYamlValue,
   loadProjectConfig,
   loadSettings,
+  printProfile,
   setYamlValue,
   writeOpenscadPath,
 } from '../config.ts'
@@ -59,22 +59,68 @@ describe('settings', () => {
     expect(settings.export).toEqual({ formats: ['stl'], filename: '{project}' })
   })
 
-  it('derives check settings with minWall defaulting to twice the nozzle', () => {
-    const paths = tempPaths('config-check')
-    expect(checkSettings(loadSettings(paths))).toEqual({
+  it('resolves the default fdm profile with minWall defaulting to twice the nozzle', () => {
+    const paths = tempPaths('config-profile')
+    expect(printProfile(loadSettings(paths))).toEqual({
+      process: 'fdm',
+      printer: 'default',
       bed: [256, 256, 256],
+      layerHeight: 0.2,
       nozzle: 0.4,
+      nozzles: [0.4],
       overhangAngle: 45,
       minWall: 0.8,
+      tolerances: { press: 0.2, sliding: 0.3, loose: 0.45, hole: 0.2 },
       minRegionArea: 1,
     })
-    write(paths.config, 'printer:\n  nozzle: 0.6\n  bed: [180, 180, 180]\n')
+  })
+
+  it('lets projects pick a nozzle, a layer height and another printer', () => {
+    const paths = tempPaths('config-printers')
+    write(
+      paths.config,
+      [
+        'print:\n  printer: x1\n',
+        'printers:\n',
+        '  x1: { process: fdm, bed: [256, 256, 256], nozzles: [0.4, 0.2, 0.6] }\n',
+        '  mars: { process: resin, bed: [143, 89, 175], pixel: 0.035 }\n',
+      ].join(''),
+    )
     const projectFile = path.join(paths.workspace, 'p', 'config.yaml')
-    write(projectFile, 'name: P\ncheck:\n  overhangAngle: 50\n')
-    const derived = checkSettings(loadProjectConfig(paths, projectFile, 'p').settings)
-    expect(derived).toMatchObject({ bed: [180, 180, 180], nozzle: 0.6, minWall: 1.2, overhangAngle: 50 })
-    write(paths.config, 'check:\n  minWall: 1\n  overhangAngle: 95\n')
-    expect(() => loadSettings(paths)).toThrow(/check\.overhangAngle/)
+    const project = () => printProfile(loadProjectConfig(paths, projectFile, 'p').settings)
+    write(projectFile, 'name: P\nprint:\n  nozzle: 0.6\n  layerHeight: 0.3\n')
+    expect(project()).toMatchObject({ printer: 'x1', nozzle: 0.6, minWall: 1.2, layerHeight: 0.3 })
+    write(projectFile, 'name: P\nprinters:\n  x1:\n    overhangAngle: 55\n')
+    expect(project()).toMatchObject({ printer: 'x1', nozzle: 0.4, overhangAngle: 55 })
+    write(projectFile, 'name: P\nprint:\n  printer: mars\n')
+    expect(project()).toMatchObject({
+      process: 'resin',
+      printer: 'mars',
+      bed: [143, 89, 175],
+      pixel: 0.035,
+      layerHeight: 0.05,
+      minFeature: 0.3,
+      tolerances: { press: 0.05, sliding: 0.1, loose: 0.2, hole: 0.1 },
+    })
+    expect(project()).not.toHaveProperty('nozzle')
+  })
+
+  it('rejects invalid printer selections and process-specific keys', () => {
+    const paths = tempPaths('config-printer-errors')
+    const fails = (yaml: string, pattern: RegExp) => {
+      write(paths.config, yaml)
+      expect(() => loadSettings(paths)).toThrow(pattern)
+    }
+    fails('print:\n  printer: nope\n', /print\.printer: "nope" is not defined in printers \(default\)/)
+    fails('print:\n  nozzle: 0.8\n', /print\.nozzle: 0\.8 mm is not one of printers\.default\.nozzles/)
+    fails('printers:\n  default: { process: fdm, bed: [200, 200, 200], pixel: 0.05 }\n', /pixel/)
+    fails('printers:\n  default: { process: resin, bed: [100, 60, 150], pixel: 0.05, nozzles: [0.4] }\n', /nozzles/)
+    fails('printers:\n  default: { process: sls, bed: [100, 100, 100] }\n', /process/)
+    fails(
+      'printers:\n  default: { process: resin, bed: [100, 60, 150], pixel: 0.05 }\nprint:\n  nozzle: 0.4\n',
+      /only applies to fdm printers/,
+    )
+    fails('printers:\n  default: { process: fdm, bed: [200, 200, 200], minWall: 0.3 }\n', /at least the nozzle/)
   })
 
   it('rejects duplicate part ids', () => {
@@ -98,15 +144,15 @@ describe('yaml editing', () => {
 
   it('appends sections from config.example.yaml that an older config.yaml lacks', () => {
     const paths = tempPaths('config-sections')
-    writeFileSync(paths.config, '# mine\nopenscad:\n  path: /opt/openscad\nprinter:\n  nozzle: 0.6\n')
+    writeFileSync(paths.config, '# mine\nopenscad:\n  path: /opt/openscad\nprint:\n  nozzle: 0.4\n')
     const added = addMissingConfigSections(paths)
-    expect(added).toEqual(['libraries', 'render', 'export', 'server', 'check'])
+    expect(added).toEqual(['libraries', 'render', 'export', 'server', 'printers', 'check'])
     const text = readFileSync(paths.config, 'utf8')
-    expect(text.startsWith('# mine\nopenscad:\n  path: /opt/openscad\nprinter:\n  nozzle: 0.6\n\n')).toBe(true)
-    expect(text).toContain('# Thresholds for `pnpm scad check` and the viewer overlays.\ncheck:\n')
+    expect(text.startsWith('# mine\nopenscad:\n  path: /opt/openscad\nprint:\n  nozzle: 0.4\n\n')).toBe(true)
+    expect(text).toContain('\ncheck:\n')
     const settings = loadSettings(paths)
     expect(settings.openscad.path).toBe('/opt/openscad')
-    expect(settings.printer.nozzle).toBe(0.6)
+    expect(printProfile(settings)).toMatchObject({ printer: 'default', nozzle: 0.4 })
     expect(addMissingConfigSections(paths)).toEqual([])
   })
 

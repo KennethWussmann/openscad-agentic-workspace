@@ -6,7 +6,6 @@ import {
   addMissingConfigSections,
   checkProject,
   checkpoint,
-  checkSettings,
   checkState,
   clearProposals,
   createLocalLibrary,
@@ -25,6 +24,7 @@ import {
   loadSettings,
   OpenscadNotFoundError,
   type Paths,
+  printProfile,
   projectLayout,
   pruneVendor,
   type RenderResult,
@@ -47,7 +47,17 @@ import {
   type ViewName,
   vendorRoot,
 } from '@scad/core'
-import { formatAnnotations, formatBBox, formatCheck, formatDiagnostic, formatRender, table } from './format.ts'
+import {
+  formatAnnotations,
+  formatBBox,
+  formatCheck,
+  formatDiagnostic,
+  formatPrinterSpec,
+  formatProfile,
+  formatRender,
+  formatTolerances,
+  table,
+} from './format.ts'
 import { api, ensureServer, findServer, openBrowser, stopServer, viewerUrl } from './server.ts'
 
 export type Flags = {
@@ -145,12 +155,38 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     ok: true,
     detail: `${rel(paths, paths.config)}${created ? ' (created from config.example.yaml)' : added.length ? ` (added ${added.join(', ')} from config.example.yaml)` : ''}`,
   })
-  const settings = loadSettings(paths)
-  const printer = checkSettings(settings)
+  let settings: Settings
+  try {
+    settings = loadSettings(paths)
+  } catch (e) {
+    checks.push({
+      name: 'config',
+      ok: false,
+      detail: 'invalid',
+      fix: `${e instanceof Error ? e.message : String(e)}\nSee config.example.yaml for every key.`,
+    })
+    return doctorOutcome(paths, checks, { openscad: null, printer: null, server: null })
+  }
+  const printer = printProfile(settings)
+  const others = Object.keys(settings.printers).filter((n) => n !== printer.printer)
   checks.push({
     name: 'printer',
     ok: true,
-    detail: `bed ${printer.bed.join(' x ')} mm, nozzle ${printer.nozzle} mm, overhang > ${printer.overhangAngle} deg, min wall ${printer.minWall} mm`,
+    detail: `${formatProfile(printer)}${others.length ? `  (also: ${others.join(', ')})` : ''}`,
+  })
+  const invalid = listProjects(paths).flatMap((p) => {
+    try {
+      loadProjectConfig(paths, projectLayout(paths, p.id).config, p.id)
+      return []
+    } catch (e) {
+      return [e instanceof Error ? e.message : String(e)]
+    }
+  })
+  checks.push({
+    name: 'projects',
+    ok: invalid.length === 0,
+    detail: invalid.length ? `${invalid.length} project config(s) invalid` : 'all project configs valid',
+    ...(invalid.length ? { fix: invalid.join('\n') } : {}),
   })
   let openscad: { command: string[]; version: string; source: string } | null = null
   try {
@@ -184,15 +220,12 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     ...(missingLibs.length ? { fix: 'Installed automatically on the next render, or run `pnpm scad lib sync`.' } : {}),
   })
   checks.push({ name: 'server', ok: true, detail: server ? viewerUrl(server.port) : 'not running (`pnpm scad serve`)' })
+  return doctorOutcome(paths, checks, { openscad, printer, server: server ? viewerUrl(server.port) : null })
+}
+
+const doctorOutcome = (paths: Paths, checks: Check[], extra: Record<string, unknown>): Outcome => {
   const ok = checks.every((c) => c.ok)
-  const data = {
-    ok,
-    checks,
-    workspace: paths.workspace,
-    openscad,
-    printer,
-    server: server ? viewerUrl(server.port) : null,
-  }
+  const data = { ok, checks, workspace: paths.workspace, ...extra }
   const text = [
     ...checks.map(
       (c) =>
@@ -202,6 +235,26 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     ok ? '\nReady.' : '\nFix the FAIL items above, then run `pnpm scad doctor` again.',
   ].join('\n')
   return { data, text, exitCode: ok ? 0 : 1 }
+}
+
+export const printer = async ({ paths, args }: Ctx): Promise<Outcome> => {
+  const project = args[0]
+  if (project) requireProject(paths, project)
+  const settings = settingsFor(paths, project)
+  const profile = printProfile(settings)
+  const data = { project: project ?? null, profile, printers: settings.printers }
+  const lines = [
+    `Designing for ${formatProfile(profile)}${project ? `  (project ${project})` : '  (workspace default)'}`,
+    `  tolerances: ${formatTolerances(profile)}`,
+    profile.process === 'fdm'
+      ? `  nozzles: ${profile.nozzles.join(', ')} mm; walls FAIL under the ${profile.nozzle} mm nozzle, WARN under ${profile.minWall} mm`
+      : `  walls FAIL under ${profile.minFeature} mm, WARN under ${profile.minWall} mm; drain holes >= ${profile.drainHole} mm for hollow parts; islands need supports`,
+    '  printers:',
+    ...Object.entries(settings.printers).map(
+      ([name, spec]) => `    ${name === profile.printer ? '*' : ' '} ${formatPrinterSpec(name, spec)}`,
+    ),
+  ]
+  return { data, text: lines.join('\n') }
 }
 
 export const newProject = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
@@ -646,6 +699,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     `${config.meta.name} (${project})  dir ${rel(paths, layout.dir)}`,
     result ? formatRender(result) : '  not rendered yet',
     `  versions: ${list.length}${list.length ? `, latest ${list.at(-1)?.id}` : ''}${data.changedSinceVersion ? ', working copy changed' : ''}`,
+    `  printer: ${formatProfile(printProfile(config.settings))}`,
     `  check: ${printCheck.status === 'missing' ? 'not run yet' : printCheck.status === 'stale' ? `outdated (was ${printCheck.result?.status})` : printCheck.status}${printCheck.status === 'pass' ? '' : ` (\`pnpm scad check ${project}\`)`}`,
   ]
   if (proposals.params)

@@ -237,13 +237,40 @@ export type ProjectSummary = {
 
 export type CheckStatus = 'pass' | 'warn' | 'fail'
 
-export type CheckSettings = {
+export const PRINT_PROCESSES = ['fdm', 'resin'] as const
+export type PrintProcess = (typeof PRINT_PROCESSES)[number]
+
+export type Tolerances = {
+  press: number
+  sliding: number
+  loose: number
+  hole: number
+}
+
+type ProfileBase = {
+  printer: string
   bed: Vec3
-  nozzle: number
-  overhangAngle: number
+  layerHeight: number
   minWall: number
+  tolerances: Tolerances
   minRegionArea: number
 }
+
+export type FdmProfile = ProfileBase & {
+  process: 'fdm'
+  nozzle: number
+  nozzles: number[]
+  overhangAngle: number
+}
+
+export type ResinProfile = ProfileBase & {
+  process: 'resin'
+  pixel: number
+  minFeature: number
+  drainHole: number
+}
+
+export type PrintProfile = FdmProfile | ResinProfile
 
 export type CheckRegion = {
   area: number
@@ -288,6 +315,19 @@ export type Body = {
   triangles: number
 }
 
+export type Island = {
+  center: Vec3
+  bbox: BBox
+  height: number
+  area: number
+}
+
+export type IslandCheck = {
+  status: CheckStatus
+  count: number
+  islands: Island[]
+}
+
 export type BodiesCheck = {
   status: CheckStatus
   bodies: number
@@ -305,7 +345,8 @@ export type PartCheck = {
   durationMs: number
   manifold: ManifoldCheck
   bed: BedCheck
-  overhangs: RegionCheck
+  overhangs: RegionCheck | null
+  islands: IslandCheck | null
   walls: RegionCheck
   bodies: BodiesCheck
 }
@@ -315,7 +356,7 @@ export type CheckResult = {
   status: CheckStatus
   checkedAt: string
   render: string
-  settings: CheckSettings
+  profile: PrintProfile
   parts: PartCheck[]
 }
 
@@ -324,7 +365,7 @@ export type ProjectState = {
   name: string
   description: string
   parts: PartDef[]
-  checkSettings: CheckSettings
+  profile: PrintProfile
   render: RenderResult | null
   tweak: RenderResult | null
   rendering: boolean

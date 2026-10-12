@@ -44,18 +44,48 @@ server:
   # Open the default browser when the agent shows a model and no viewer tab is connected.
   open: true
 
-# Printer used by `pnpm scad check` and the viewer overlays.
-printer:
-  # Build volume [x, y, z] in mm. Parts larger than this fail the bed check.
-  bed: [256, 256, 256]
-  # Nozzle diameter in mm. Walls thinner than this fail the wall check.
-  nozzle: 0.4
+# What you design for: the printer, nozzle and layer height. Used by `pnpm scad check`, the viewer
+# (build plate, overlays) and the agent (tolerances and clearances, `pnpm scad printer`).
+# Projects switch any of these in their config.yaml, e.g. `print: { nozzle: 0.6 }` or `print: { printer: mars }`.
+print:
+  # Active printer, a key of `printers`.
+  printer: default
+  # Nozzle to design for (fdm only), one of the printer's `nozzles`. null = the first one in the list.
+  nozzle: null
+  # Layer height in mm. null = the printer's `layerHeight`.
+  layerHeight: null
 
-# Thresholds for `pnpm scad check` and the viewer overlays.
+# The printers you own, by name. `process` decides which keys apply:
+#   fdm:   bed, nozzles, layerHeight, overhangAngle, minWall, tolerances
+#   resin: bed, pixel, layerHeight, minWall, minFeature, drainHole, tolerances (SLA, MSLA, DLP)
+# Tolerances are per side for mating parts; `hole` is added to the diameter of holes for pins and screws.
+printers:
+  default:
+    process: fdm
+    # Build volume [x, y, z] in mm. Parts larger than this fail the bed check.
+    bed: [256, 256, 256]
+    # Nozzle diameters this printer can use, the first is the default. Walls thinner than the nozzle fail.
+    nozzles: [0.4]
+    layerHeight: 0.2
+    # Faces tilted further than this many degrees from vertical count as overhangs. Faces on the bed are ignored.
+    overhangAngle: 45
+    # Walls thinner than this (mm) are reported. null means 2 x nozzle.
+    minWall: null
+    tolerances: { press: 0.2, sliding: 0.3, loose: 0.45, hole: 0.2 }
+#  mars:
+#    process: resin
+#    bed: [143, 89, 175]
+#    # XY pixel size of the screen or projector in mm.
+#    pixel: 0.035
+#    layerHeight: 0.05
+#    # Walls thinner than this warn, details thinner than minFeature fail.
+#    minWall: 0.8
+#    minFeature: 0.3
+#    # Smallest drain/vent hole diameter for hollow parts, in mm.
+#    drainHole: 2.5
+#    tolerances: { press: 0.05, sliding: 0.1, loose: 0.2, hole: 0.1 }
+
+# Analysis settings for `pnpm scad check` and the viewer overlays.
 check:
-  # Faces tilted further than this many degrees from vertical count as overhangs. Faces on the bed are ignored.
-  overhangAngle: 45
-  # Walls thinner than this (mm) are reported. null means 2 x printer.nozzle.
-  minWall: null
   # Overhang and thin-wall regions smaller than this (mm2) are not reported.
   minRegionArea: 1

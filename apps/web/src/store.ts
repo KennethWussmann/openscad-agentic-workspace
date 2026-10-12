@@ -20,7 +20,7 @@ export type Display = {
 export type AnalysisMode = 'overhangs' | 'walls'
 
 export type AnalysisSummary = {
-  mode: AnalysisMode
+  mode: AnalysisMode | 'islands'
   busy: boolean
   area: number
   extreme: number | null

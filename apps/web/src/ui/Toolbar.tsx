@@ -1,4 +1,4 @@
-import type { Vec3 } from '@scad/core/protocol'
+import type { PrintProcess, Vec3 } from '@scad/core/protocol'
 import {
   ArrowDownFromLine,
   Box,
@@ -135,7 +135,7 @@ const rangeOf = (bounds: [Vec3, Vec3] | null, axis: 'x' | 'y' | 'z'): [number, n
   return [bounds[0][i], bounds[1][i]]
 }
 
-export const Toolbar = () => {
+export const Toolbar = ({ process }: { process: PrintProcess }) => {
   const bounds = useStore((s) => s.bounds)
   const display = useStore((s) => s.display)
   const toggle = useStore((s) => s.toggleDisplay)
@@ -172,7 +172,7 @@ export const Toolbar = () => {
         {ANALYSIS.map((d) => (
           <ToolButton
             key={d.key}
-            label={d.label}
+            label={d.key === 'overhangs' && process === 'resin' ? 'Islands' : d.label}
             shortcut={d.shortcut}
             active={display[d.key]}
             onClick={() => toggle(d.key)}

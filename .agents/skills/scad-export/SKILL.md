@@ -49,7 +49,7 @@ Export it with `pnpm scad export <id> --part panel-outline --formats svg,dxf`. E
 
 ## Before delivering for printing
 
-Run `pnpm scad check <id>` first. It covers most of this list against `printer` and `check` in `config.yaml`. Set `printer.bed` and `printer.nozzle` to the user's printer if they differ from the defaults (256 x 256 x 256 mm, 0.4 mm). `export` notes when the check is missing, outdated or failed.
+Run `pnpm scad check <id>` first. It covers most of this list against the active printer profile (`pnpm scad printer <id>`). If the user prints on a different printer or nozzle, select it in the project's `config.yaml` under `print` first. `export` notes when the check is missing, outdated or failed.
 
 Run through this and fix or flag anything that fails:
 
@@ -58,7 +58,8 @@ Run through this and fix or flag anything that fails:
 - Each part sits on z = 0 in its print orientation, nothing floating, one body per part unless intended (`check` bed and bodies).
 - Bounding boxes fit the user's printer bed (`check` bed; ask for the bed size if unknown).
 - Wall thickness and clearances follow the scad-craft defaults (`check` walls); check a section snapshot through the thinnest reported region. Clearances between parts are not measured by `check`.
-- Overhangs and bridges are printable or the user knows supports are needed (`check` overhangs lists every region).
+- FDM: overhangs and bridges are printable or the user knows supports are needed (`check` overhangs lists every region).
+- Resin: the user knows where islands need supports, and hollow parts have drain and vent holes of at least `drainHole` mm (`check` islands and bodies).
 - Checkpointed, so files map to a version.
 
 Then tell the user the file paths in `out/`, the version, the key dimensions and any print hints (orientation, supports, infill or material assumptions).

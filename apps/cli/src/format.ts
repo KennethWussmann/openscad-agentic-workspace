@@ -7,16 +7,33 @@ import {
   type Body,
   type CheckRegion,
   type CheckResult,
-  type CheckSettings,
   type Diagnostic,
   FOLD_ANGLE,
   type PartCheck,
+  type PrinterSpec,
+  type PrintProfile,
   type RenderResult,
   type Surface,
   type ViewSection,
+  wallLimits,
 } from '@scad/core'
 
 const num = (n: number) => (Math.abs(n) >= 100 ? n.toFixed(1) : n.toFixed(2)).replace(/\.?0+$/, '')
+
+export const formatProfile = (p: PrintProfile) => {
+  const common = `${p.printer} (${p.process}), bed ${p.bed.map(num).join(' x ')} mm, layer ${num(p.layerHeight)} mm`
+  return p.process === 'fdm'
+    ? `${common}, nozzle ${num(p.nozzle)} mm, overhang > ${num(p.overhangAngle)} deg, min wall ${num(p.minWall)} mm`
+    : `${common}, pixel ${num(p.pixel)} mm, min feature ${num(p.minFeature)} mm, min wall ${num(p.minWall)} mm`
+}
+
+export const formatTolerances = (p: PrintProfile) => {
+  const t = p.tolerances
+  return `press ${num(t.press)}, sliding ${num(t.sliding)}, loose ${num(t.loose)} mm per side; holes +${num(t.hole)} mm on the diameter`
+}
+
+export const formatPrinterSpec = (name: string, p: PrinterSpec) =>
+  `${name} (${p.process}), bed ${p.bed.map(num).join(' x ')} mm, ${p.process === 'fdm' ? `nozzles ${p.nozzles.map(num).join(', ')} mm` : `pixel ${num(p.pixel)} mm`}`
 
 export const formatBBox = (b: BBox | null) =>
   b ? `${b.size.map(num).join(' x ')} mm  (min ${b.min.map(num).join(', ')} / max ${b.max.map(num).join(', ')})` : '-'
@@ -130,7 +147,8 @@ const formatRegions = (regions: CheckRegion[], total: number, describe: (r: Chec
 
 const formatBody = (b: Body) => `${b.bbox.size.map(num).join(' x ')} mm at ${vec(b.bbox.min)}`
 
-export const formatCheckPart = (p: PartCheck, s: CheckSettings) => {
+export const formatCheckPart = (p: PartCheck, s: PrintProfile) => {
+  const limits = wallLimits(s)
   const row = (status: keyof typeof LABEL, name: string, text: string) =>
     `    ${LABEL[status]}  ${name.padEnd(10)} ${text}`
   const m = p.manifold
@@ -169,23 +187,42 @@ export const formatCheckPart = (p: PartCheck, s: CheckSettings) => {
     ),
   )
   const o = p.overhangs
-  lines.push(
-    row(
-      o.status,
-      'overhangs',
-      o.regions.length
-        ? `${num(o.area)} mm2 steeper than ${num(s.overhangAngle)} deg in ${o.regions.length} region(s), up to ${num(o.worst ?? 0)} deg (90 = flat ceiling or bridge)`
-        : `none steeper than ${num(s.overhangAngle)} deg`,
-    ),
-    ...formatRegions(o.regions, o.regions.length, (r) => `up to ${num(r.worst)} deg`),
-  )
+  if (o && s.process === 'fdm')
+    lines.push(
+      row(
+        o.status,
+        'overhangs',
+        o.regions.length
+          ? `${num(o.area)} mm2 steeper than ${num(s.overhangAngle)} deg in ${o.regions.length} region(s), up to ${num(o.worst ?? 0)} deg (90 = flat ceiling or bridge)`
+          : `none steeper than ${num(s.overhangAngle)} deg`,
+      ),
+      ...formatRegions(o.regions, o.regions.length, (r) => `up to ${num(r.worst)} deg`),
+    )
+  const isl = p.islands
+  if (isl)
+    lines.push(
+      row(
+        isl.status,
+        'islands',
+        isl.count
+          ? `${isl.count} island(s) start unsupported in this orientation and need supports`
+          : 'none, every layer grows from the one below',
+      ),
+      ...isl.islands
+        .slice(0, MAX_LISTED)
+        .map(
+          (i) =>
+            `           - ${num(i.height)} mm above the bed at ${vec(i.center)}${i.area ? `, flat ${num(i.area)} mm2` : ''}`,
+        ),
+      ...(isl.count > MAX_LISTED ? [`           ... ${isl.count - MAX_LISTED} more`] : []),
+    )
   const w = p.walls
   lines.push(
     row(
       w.status,
       'walls',
       w.regions.length
-        ? `${num(w.area)} mm2 thinner than ${num(s.minWall)} mm in ${w.regions.length} region(s), thinnest ${num(w.worst ?? 0)} mm (nozzle ${num(s.nozzle)})`
+        ? `${num(w.area)} mm2 thinner than ${num(s.minWall)} mm in ${w.regions.length} region(s), thinnest ${num(w.worst ?? 0)} mm (${s.process === 'fdm' ? 'nozzle' : 'min feature'} ${num(limits.fail)})`
         : `nothing thinner than ${num(s.minWall)} mm`,
     ),
     ...formatRegions(w.regions, w.regions.length, (r) => `${num(r.worst)} mm`),
@@ -195,7 +232,7 @@ export const formatCheckPart = (p: PartCheck, s: CheckSettings) => {
     row(
       bodies.status,
       'bodies',
-      `${bodies.bodies} solid${bodies.bodies === 1 ? '' : 's'}${bodies.voids ? `, ${bodies.voids} enclosed void(s)` : ''}${bodies.floating.length ? `, ${bodies.floating.length} floating above the bed` : ''}${bodies.small.length ? `, ${bodies.small.length} smaller than ${num(s.minWall)} mm` : ''}`,
+      `${bodies.bodies} solid${bodies.bodies === 1 ? '' : 's'}${bodies.voids ? `, ${bodies.voids} enclosed void(s)${s.process === 'resin' ? ` trapping resin: add drain holes of at least ${num(s.drainHole)} mm` : ''}` : ''}${bodies.floating.length ? `, ${bodies.floating.length} floating above the bed` : ''}${bodies.small.length ? `, ${bodies.small.length} smaller than ${num(s.minWall)} mm` : ''}`,
     ),
     ...bodies.floating.slice(0, MAX_LISTED).map((x) => `           - floating ${formatBody(x)}`),
     ...bodies.small.slice(0, MAX_LISTED).map((x) => `           - small ${formatBody(x)}`),
@@ -204,9 +241,8 @@ export const formatCheckPart = (p: PartCheck, s: CheckSettings) => {
 }
 
 export const formatCheck = (r: CheckResult) => {
-  const s = r.settings
   return [
-    `${LABEL[r.status]}  ${r.project}  bed ${s.bed.map(num).join(' x ')} mm, nozzle ${num(s.nozzle)} mm, overhang > ${num(s.overhangAngle)} deg, min wall ${num(s.minWall)} mm`,
-    ...r.parts.map((p) => formatCheckPart(p, s)),
+    `${LABEL[r.status]}  ${r.project}  ${formatProfile(r.profile)}`,
+    ...r.parts.map((p) => formatCheckPart(p, r.profile)),
   ].join('\n')
 }

@@ -14,6 +14,7 @@ import {
   type Outcome,
   open,
   params,
+  printer,
   proposal,
   render,
   restore,
@@ -44,7 +45,9 @@ Projects
            [--part a,b] [--size 900] [--out name.png]
                                           Extra PNG view or cross-section into preview/
   params <project>                        Customizer parameters with values, ranges and options
-  check <project> [--part a,b]            Printability: manifold, bed fit, overhangs, thin walls, floating bodies.
+  printer [project]                       Active printer profile (process, bed, nozzle, tolerances) and all printers
+  check <project> [--part a,b]            Printability against the active printer: manifold, bed fit, thin walls,
+                                          floating bodies, overhangs (fdm) or islands and trapped resin (resin).
                                           Renders first when sources changed, writes preview/check.json, exit 1 on FAIL
   export <project> [--formats 3mf,stl,...] [--part a,b]
                                           Write configured formats to out/
@@ -76,6 +79,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => Promise<Outcome>> = {
   render,
   snapshot,
   params,
+  printer,
   check,
   export: exportCmd,
   checkpoint: checkpointCmd,

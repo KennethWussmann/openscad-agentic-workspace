@@ -1,10 +1,36 @@
 import { describe, expect, it } from 'vitest'
 import { analyzeMesh, BED_FACE, overhangField, thicknessOfMesh, worstStatus } from '../check.ts'
-import type { CheckSettings, Vec3 } from '../protocol.ts'
+import type { FdmProfile, PrintProfile, ResinProfile, Vec3 } from '../protocol.ts'
 
 type Mesh = { positions: number[]; index: number[] }
 
-const SETTINGS: CheckSettings = { bed: [256, 256, 256], nozzle: 0.4, overhangAngle: 45, minWall: 0.8, minRegionArea: 1 }
+const TOLERANCES = { press: 0.2, sliding: 0.3, loose: 0.45, hole: 0.2 }
+
+const FDM: FdmProfile = {
+  process: 'fdm',
+  printer: 'test',
+  bed: [256, 256, 256],
+  layerHeight: 0.2,
+  nozzle: 0.4,
+  nozzles: [0.4],
+  overhangAngle: 45,
+  minWall: 0.8,
+  tolerances: TOLERANCES,
+  minRegionArea: 1,
+}
+
+const RESIN: ResinProfile = {
+  process: 'resin',
+  printer: 'resin',
+  bed: [143, 89, 175],
+  layerHeight: 0.05,
+  pixel: 0.035,
+  minWall: 0.8,
+  minFeature: 0.3,
+  drainHole: 2.5,
+  tolerances: TOLERANCES,
+  minRegionArea: 1,
+}
 
 const QUADS = [
   [0, 3, 2, 1],
@@ -34,8 +60,39 @@ const merge = (...meshes: Mesh[]): Mesh => {
   return { positions, index }
 }
 
-const analyze = (m: Mesh, settings: Partial<CheckSettings> = {}) =>
-  analyzeMesh(m.positions, m.index, { ...SETTINGS, ...settings })
+const prism = (profile: [number, number][], depth: number): Mesh => {
+  const n = profile.length
+  const positions = [...profile.flatMap(([x, z]) => [x, 0, z]), ...profile.flatMap(([x, z]) => [x, depth, z])]
+  const index: number[] = []
+  for (let i = 1; i < n - 1; i++) index.push(0, i, i + 1, n, n + i + 1, n + i)
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n
+    index.push(i, n + i, n + j, i, n + j, j)
+  }
+  return { positions, index }
+}
+
+const pyramidDown = (tip: Vec3, size: number, h: number): Mesh => {
+  const [x, y, z] = tip
+  const s = size / 2
+  const positions = [x, y, z, x - s, y - s, z + h, x + s, y - s, z + h, x + s, y + s, z + h, x - s, y + s, z + h]
+  const index = [0, 2, 1, 0, 3, 2, 0, 4, 3, 0, 1, 4, 1, 2, 3, 1, 3, 4]
+  return { positions, index }
+}
+
+const hollow = () => {
+  const outer = box([0, 0, 0], [20, 20, 20])
+  const inner = box([2, 2, 2], [18, 18, 18])
+  for (let i = 0; i < inner.index.length; i += 3)
+    [inner.index[i + 1], inner.index[i + 2]] = [inner.index[i + 2], inner.index[i + 1]]
+  return merge(outer, inner)
+}
+
+const analyze = (m: Mesh, settings: Partial<FdmProfile> = {}) =>
+  analyzeMesh(m.positions, m.index, { ...FDM, ...settings })
+
+const analyzeResin = (m: Mesh, settings: Partial<ResinProfile> = {}) =>
+  analyzeMesh(m.positions, m.index, { ...RESIN, ...settings } satisfies PrintProfile)
 
 describe('analyzeMesh', () => {
   it('passes a plain cube on the bed', () => {
@@ -44,7 +101,7 @@ describe('analyzeMesh', () => {
     expect(r.triangles).toBe(12)
     expect(r.bbox?.size).toEqual([20, 20, 20])
     expect(r.manifold).toMatchObject({ status: 'pass', openEdges: 0, nonManifoldEdges: 0, flippedEdges: 0 })
-    expect(r.overhangs.regions).toEqual([])
+    expect(r.overhangs?.regions).toEqual([])
     expect(r.walls.regions).toEqual([])
     expect(r.bodies).toMatchObject({ bodies: 1, voids: 0, floating: [], small: [] })
   })
@@ -80,9 +137,9 @@ describe('analyzeMesh', () => {
     const base = m.positions.length / 3
     m.positions.push(10, 0, 10, 10, 10, 10, 15, 5, 10.0001)
     const fin = [base, base + 1, base + 2]
-    const r = analyzeMesh(m.positions, m.index, SETTINGS)
+    const r = analyzeMesh(m.positions, m.index, FDM)
     expect(r.manifold.foldedEdges).toBe(0)
-    const withFin = analyzeMesh([...m.positions], [...m.index, ...fin, fin[0], fin[2], fin[1]], SETTINGS)
+    const withFin = analyzeMesh([...m.positions], [...m.index, ...fin, fin[0], fin[2], fin[1]], FDM)
     expect(withFin.manifold.foldedEdges).toBeGreaterThan(0)
     expect(withFin.manifold.folds.length).toBeGreaterThan(0)
   })
@@ -103,9 +160,9 @@ describe('analyzeMesh', () => {
 
   it('finds overhangs, ignores the bed and flags floating bodies', () => {
     const r = analyze(merge(box([0, 0, 0], [10, 10, 10]), box([20, 0, 5], [30, 10, 15])))
-    expect(r.overhangs.status).toBe('warn')
-    expect(r.overhangs.regions).toHaveLength(1)
-    expect(r.overhangs.regions[0]).toMatchObject({ area: 100, worst: 90, center: [25, 5, 5], triangles: 2 })
+    expect(r.overhangs?.status).toBe('warn')
+    expect(r.overhangs?.regions).toHaveLength(1)
+    expect(r.overhangs?.regions[0]).toMatchObject({ area: 100, worst: 90, center: [25, 5, 5], triangles: 2 })
     expect(r.bodies.bodies).toBe(2)
     expect(r.bodies.floating).toHaveLength(1)
     expect(r.bodies.floating[0].bbox.min).toEqual([20, 0, 5])
@@ -114,7 +171,7 @@ describe('analyzeMesh', () => {
 
   it('drops overhang regions below minRegionArea', () => {
     const r = analyze(merge(box([0, 0, 0], [10, 10, 10]), box([20, 0, 5], [20.5, 0.5, 5.5])))
-    expect(r.overhangs.regions).toEqual([])
+    expect(r.overhangs?.regions).toEqual([])
     expect(r.bodies.small).toHaveLength(1)
   })
 
@@ -140,6 +197,62 @@ describe('analyzeMesh', () => {
     expect(r.bodies).toMatchObject({ bodies: 1, voids: 1 })
     expect(r.walls.worst).toBeCloseTo(0.5, 3)
     expect(r.walls.status).toBe('warn')
+  })
+
+  it('checks overhangs but not islands for fdm', () => {
+    const r = analyze(box([0, 0, 0], [20, 20, 20]))
+    expect(r.overhangs).not.toBeNull()
+    expect(r.islands).toBeNull()
+  })
+})
+
+describe('analyzeMesh for resin', () => {
+  it('skips overhangs and passes a cube on the bed', () => {
+    const r = analyzeResin(box([0, 0, 0], [20, 20, 20]))
+    expect(r.overhangs).toBeNull()
+    expect(r.islands).toEqual({ status: 'pass', count: 0, islands: [] })
+    expect(r.status).toBe('pass')
+  })
+
+  it('reports a floating body as a flat island', () => {
+    const r = analyzeResin(merge(box([0, 0, 0], [10, 10, 10]), box([20, 0, 5], [30, 10, 15])))
+    expect(r.islands?.status).toBe('warn')
+    expect(r.islands?.count).toBe(1)
+    expect(r.islands?.islands[0]).toMatchObject({ height: 5, area: 100, center: [25, 5, 5] })
+  })
+
+  it('reports a downward tip as a point island', () => {
+    const r = analyzeResin(merge(box([0, 0, 0], [10, 10, 10]), pyramidDown([30, 5, 4], 6, 6)))
+    expect(r.islands?.count).toBe(1)
+    expect(r.islands?.islands[0]).toMatchObject({ height: 4, area: 0, center: [30, 5, 4] })
+  })
+
+  it('does not flag an overhang that grows from the bed', () => {
+    const r = analyzeResin(
+      prism(
+        [
+          [0, 0],
+          [10, 0],
+          [30, 20],
+          [20, 20],
+        ],
+        10,
+      ),
+    )
+    expect(r.manifold.status).toBe('pass')
+    expect(r.islands?.count).toBe(0)
+  })
+
+  it('warns about enclosed voids but does not count their floor as an island', () => {
+    const r = analyzeResin(hollow())
+    expect(r.islands?.count).toBe(0)
+    expect(r.bodies).toMatchObject({ status: 'warn', voids: 1 })
+    expect(analyze(hollow()).bodies.status).toBe('pass')
+  })
+
+  it('fails walls under minFeature and warns under minWall', () => {
+    expect(analyzeResin(box([0, 0, 0], [20, 20, 0.5])).walls.status).toBe('warn')
+    expect(analyzeResin(box([0, 0, 0], [20, 20, 0.2])).walls.status).toBe('fail')
   })
 })
 

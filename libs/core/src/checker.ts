@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { analyzeMesh, worstStatus } from './check.ts'
-import { checkSettings, loadProjectConfig } from './config.ts'
+import { loadProjectConfig, printProfile } from './config.ts'
 import { read3mf } from './mesh3mf.ts'
 import { type Paths, projectLayout } from './paths.ts'
 import type { CheckResult, CheckStatus, PartCheck } from './protocol.ts'
@@ -19,7 +19,7 @@ export const checkProject = (paths: Paths, project: string, parts?: string[]): C
   if (render.status !== 'ok') throw new Error('The last render has errors. Fix them and render again before checking.')
   const unknown = (parts ?? []).filter((id) => !render.parts.some((p) => p.id === id))
   if (unknown.length) throw new Error(`Unknown part(s): ${unknown.join(', ')}`)
-  const settings = checkSettings(loadProjectConfig(paths, layout.config, project).settings)
+  const profile = printProfile(loadProjectConfig(paths, layout.config, project).settings)
   const results: PartCheck[] = render.parts
     .filter((p) => p.model && (!parts || parts.includes(p.id)))
     .map((part) => {
@@ -27,7 +27,7 @@ export const checkProject = (paths: Paths, project: string, parts?: string[]): C
       const file = path.join(layout.dir, part.model as string)
       if (!existsSync(file)) throw new Error(`Model ${part.model} is missing. Render again.`)
       const mesh = read3mf(file)
-      const analysis = analyzeMesh(mesh.positions, mesh.index, settings)
+      const analysis = analyzeMesh(mesh.positions, mesh.index, profile)
       return { id: part.id, label: part.label, ...analysis, durationMs: Date.now() - started }
     })
   const result: CheckResult = {
@@ -35,7 +35,7 @@ export const checkProject = (paths: Paths, project: string, parts?: string[]): C
     status: worstStatus(results.map((p) => p.status)),
     checkedAt: new Date().toISOString(),
     render: render.finishedAt,
-    settings,
+    profile,
     parts: results,
   }
   if (!parts) writeJsonAtomic(checkFile(paths, project), result)

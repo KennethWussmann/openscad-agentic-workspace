@@ -210,7 +210,7 @@ export const App = () => {
               </button>
             ) : (
               <>
-                <Toolbar />
+                <Toolbar process={project.profile.process} />
                 <ViewCube />
               </>
             )}
