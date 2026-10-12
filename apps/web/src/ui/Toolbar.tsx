@@ -5,6 +5,7 @@ import {
   FlipVertical2,
   Grid3x3,
   Layers,
+  MapPinPlus,
   Maximize,
   Move3d,
   Rotate3d,
@@ -176,6 +177,14 @@ export const Toolbar = () => {
           onClick={() => setTool(tool === 'measure' ? 'orbit' : 'measure')}
         >
           <Ruler size={16} />
+        </ToolButton>
+        <ToolButton
+          label="Note"
+          shortcut="N"
+          active={tool === 'annotate'}
+          onClick={() => setTool(tool === 'annotate' ? 'orbit' : 'annotate')}
+        >
+          <MapPinPlus size={16} />
         </ToolButton>
         {measures.length > 0 && (
           <ToolButton label="Clear" onClick={clearMeasures}>

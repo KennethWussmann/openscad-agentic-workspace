@@ -120,6 +120,7 @@ const SHORTCUTS: [string, string][] = [
   ['D', 'Bounding box'],
   ['S', 'Section'],
   ['M', 'Measure (click two points)'],
+  ['N', 'Note (pin a note for the agent)'],
   ['Esc', 'Cancel / leave tool'],
   ['[ ]', 'Previous / next version'],
   ['B', 'Side panel'],

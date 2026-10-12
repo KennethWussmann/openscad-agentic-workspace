@@ -1,4 +1,4 @@
-import type { DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/core/protocol'
+import type { Annotation, DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/core/protocol'
 import { create } from 'zustand'
 
 export type Axis = 'x' | 'y' | 'z' | 'free'
@@ -24,7 +24,9 @@ export type SectionState = {
   gizmo: 'translate' | 'rotate'
 }
 
-export type Tool = 'orbit' | 'measure'
+export type Tool = 'orbit' | 'measure' | 'annotate'
+
+export type NoteDraft = Omit<Annotation, 'n'> & { id: number }
 
 export type Store = {
   projects: ProjectSummary[]
@@ -41,6 +43,8 @@ export type Store = {
   tool: Tool
   measures: Measurement[]
   pending: Vec3 | null
+  notes: NoteDraft[]
+  editing: number | null
   edits: Record<string, DefineValue>
   fitToken: number
   bounds: [Vec3, Vec3] | null
@@ -62,6 +66,12 @@ export type Store = {
   addPoint: (p: Vec3) => void
   clearMeasures: () => void
   cancelPending: () => void
+  addNote: (note: Omit<NoteDraft, 'id' | 'text'>) => void
+  updateNote: (id: number, text: string) => void
+  removeNote: (id: number) => void
+  editNote: (id: number) => void
+  closeEditor: () => void
+  clearNotes: () => void
   setEdit: (name: string, value: DefineValue | undefined) => void
   resetEdits: () => void
   requestFit: () => void
@@ -102,6 +112,7 @@ const loadDisplay = (): Display => {
 }
 
 let measureId = 0
+let noteId = 0
 
 export const useStore = create<Store>((set, get) => ({
   projects: [],
@@ -118,6 +129,8 @@ export const useStore = create<Store>((set, get) => ({
   tool: 'orbit',
   measures: [],
   pending: null,
+  notes: [],
+  editing: null,
   edits: {},
   fitToken: 0,
   bounds: null,
@@ -135,7 +148,17 @@ export const useStore = create<Store>((set, get) => ({
       rendering: { preview: Boolean(project?.rendering), tweak: false },
       ...(sameProject
         ? {}
-        : { versionId: null, ghostId: null, hidden: [], solo: null, measures: [], pending: null, edits: {} }),
+        : {
+            versionId: null,
+            ghostId: null,
+            hidden: [],
+            solo: null,
+            measures: [],
+            pending: null,
+            notes: [],
+            editing: null,
+            edits: {},
+          }),
     })
     if (!sameProject) get().requestFit()
     if (sameProject && project) {
@@ -171,6 +194,19 @@ export const useStore = create<Store>((set, get) => ({
     ),
   clearMeasures: () => set({ measures: [], pending: null }),
   cancelPending: () => set({ pending: null }),
+  addNote: (note) =>
+    set((s) => {
+      const id = ++noteId
+      const notes = s.notes.filter((n) => n.id !== s.editing || n.text.trim())
+      return { notes: [...notes, { ...note, id, text: '' }], editing: id }
+    }),
+  updateNote: (id, text) => set((s) => ({ notes: s.notes.map((n) => (n.id === id ? { ...n, text } : n)) })),
+  removeNote: (id) =>
+    set((s) => ({ notes: s.notes.filter((n) => n.id !== id), editing: s.editing === id ? null : s.editing })),
+  editNote: (editing) =>
+    set((s) => ({ notes: s.notes.filter((n) => n.id === editing || n.id !== s.editing || n.text.trim()), editing })),
+  closeEditor: () => set((s) => ({ notes: s.notes.filter((n) => n.id !== s.editing || n.text.trim()), editing: null })),
+  clearNotes: () => set({ notes: [], editing: null }),
   setEdit: (name, value) =>
     set((s) => {
       const edits = { ...s.edits }

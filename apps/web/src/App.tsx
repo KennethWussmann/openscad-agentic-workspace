@@ -118,6 +118,9 @@ const useKeys = () => {
         d: () => s.toggleDisplay('dims'),
         s: () => s.setSection({ enabled: !s.section.enabled }),
         m: () => s.setTool(s.tool === 'measure' ? 'orbit' : 'measure'),
+        n: () => {
+          if (!s.embed) s.setTool(s.tool === 'annotate' ? 'orbit' : 'annotate')
+        },
         c: () => s.toggleConsole(),
         b: () => s.toggleSidebar(),
         v: () => s.toggleEmbed(),
@@ -126,6 +129,7 @@ const useKeys = () => {
         ']': () => step(1),
         Escape: () => {
           if (s.help) s.toggleHelp()
+          else if (s.editing !== null) s.closeEditor()
           else if (s.pending) s.cancelPending()
           else if (s.tool !== 'orbit') s.setTool('orbit')
         },
@@ -213,6 +217,9 @@ export const App = () => {
               <div className="tool-hint mono">
                 {pending ? 'pick the second point' : 'pick the first point, vertices snap'}
               </div>
+            )}
+            {tool === 'annotate' && !embed && (
+              <div className="tool-hint mono">click a face, edge or corner to pin a note</div>
             )}
             {!embed && <TitleBlock project={project} />}
             <Console project={project} />

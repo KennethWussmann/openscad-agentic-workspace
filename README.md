@@ -44,7 +44,7 @@ flowchart LR
 
     src -.->|watched| watcher
     push --> viewer[Browser viewer]
-    viewer -->|Send to agent| proposals["proposals/"]
+    viewer -->|Send to agent:<br/>params, 3D notes + snapshot| proposals["proposals/"]
     proposals -->|pnpm scad proposal| agent
     viewer -.->|shows model live| you
 ```
@@ -66,6 +66,10 @@ flowchart LR
 - **Measuring:** click two points to get distance and dx/dy/dz. Points snap to vertices.
 - **Parts panel:** shows each part on its own or the whole assembly.
 - **Parameter panel:** lists the OpenSCAD customizer parameters. Changing a value renders a temporary preview. "Send to agent" turns your values into a proposal the agent applies to the source.
+- **3D notes:** the Note tool (N) pins a numbered note wherever you click: on a face, an edge or a corner. You can add several, edit or delete them in place or in the Notes panel, and send them together. The agent gets each note's coordinates, normal and part, and what was clicked. That covers snapped edge end points and angle, flat face extent, or a fitted cylinder axis and diameter for holes and bosses. It also gets a snapshot of your view with the numbered pins. Sending again replaces notes the agent has not handled yet. Sent notes stay visible as dashed pins until the agent clears them.
+
+  ![A note pinned to an edge of the model, with the inline editor open and the note listed in the Notes panel](docs/assets/viewer-notes.jpg)
+
 - **Version timeline:** open any checkpoint, or overlay one as a ghost to compare.
 - **Errors and console:** OpenSCAD errors appear on top of the last good model, and the console shows ECHO output and warnings.
 
@@ -84,7 +88,7 @@ Press `?` in the viewer for all keys.
 | `snapshot <project> --section x=10` | Extra views and cross-sections as PNG |
 | `params <project>` | Customizer parameters |
 | `checkpoint <project> -m "..."` / `versions` / `restore <project> v003` | History |
-| `proposal <project>` | Parameter values sent from the viewer |
+| `proposal <project>` | Parameter values and 3D notes sent from the viewer |
 | `export <project>` | Write the configured formats to `out/` |
 | `lib new` / `lib add` / `lib sync` | Shared and third-party OpenSCAD libraries |
 
@@ -113,7 +117,7 @@ workspace/                    gitignored
     src/                      OpenSCAD sources (source of truth)
     preview/                  current render: models, render.json, sheet.png, snapshots
     versions/vNNN/            checkpoints
-    proposals/                parameter proposals from the viewer
+    proposals/                from the viewer: params.json, annotations.json + annotations.png
     out/                      exports
     temp/                     scratch
 ```

@@ -1,10 +1,11 @@
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseDocument, stringify } from 'yaml'
 import { loadProjectConfig } from './config.ts'
 import { type Paths, projectLayout } from './paths.ts'
-import { isProjectId, type ProjectState, type ProjectSummary, type Proposal } from './protocol.ts'
-import { readJson, readRender, writeJsonAtomic } from './render.ts'
+import { hasProposals, readProposals } from './proposals.ts'
+import { isProjectId, type ProjectState, type ProjectSummary } from './protocol.ts'
+import { readRender } from './render.ts'
 import { listVersions } from './versions.ts'
 
 export const assertProjectId = (id: string) => {
@@ -151,18 +152,11 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
         updated,
         status: render ? render.status : 'unrendered',
         versions: listVersions(paths, id).length,
-        proposal: existsSync(layout.proposal),
+        proposal: hasProposals(paths, id),
       }
     })
     .sort((a, b) => b.updated - a.updated)
 }
-
-export const readProposal = (paths: Paths, id: string) => readJson<Proposal>(projectLayout(paths, id).proposal)
-
-export const writeProposal = (paths: Paths, id: string, proposal: Proposal) =>
-  writeJsonAtomic(projectLayout(paths, id).proposal, proposal)
-
-export const clearProposal = (paths: Paths, id: string) => rmSync(projectLayout(paths, id).proposal, { force: true })
 
 export const projectState = (paths: Paths, id: string, rendering = false): ProjectState => {
   const layout = requireProject(paths, id)
@@ -176,6 +170,6 @@ export const projectState = (paths: Paths, id: string, rendering = false): Proje
     tweak: readRender(paths, id, 'tweak'),
     rendering,
     versions: listVersions(paths, id),
-    proposal: readProposal(paths, id),
+    proposals: readProposals(paths, id),
   }
 }

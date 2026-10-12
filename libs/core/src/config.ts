@@ -19,7 +19,7 @@ export const EXPORT_FORMATS = [
 ] as const
 export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
-const DefineValueSchema: z.ZodType<DefineValue> = z.lazy(() =>
+export const DefineValueSchema: z.ZodType<DefineValue> = z.lazy(() =>
   z.union([z.number(), z.string(), z.boolean(), z.array(DefineValueSchema)]),
 )
 

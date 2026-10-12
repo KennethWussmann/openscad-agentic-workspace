@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { discoverOpenscad } from '@scad/core'
+import { discoverOpenscad, resolvePaths, writeAnnotations } from '@scad/core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const base = path.resolve(import.meta.dirname, '../.test-tmp', `cli-${process.pid}`)
@@ -55,6 +55,75 @@ it('manages local libraries', () => {
   expect(existsSync(path.join(workspace, '_libs', 'fasteners', 'fasteners.scad'))).toBe(true)
   const libs = json<{ local: { name: string }[] }>('lib', 'list')
   expect(libs.data.local.map((l) => l.name)).toEqual(['fasteners'])
+})
+
+it('shows pending annotations with geometry and snapshot path, then clears them', () => {
+  const source = { kind: 'working' as const, version: null, render: null }
+  writeAnnotations(
+    resolvePaths({ workspace, config }),
+    'clip',
+    {
+      source,
+      camera: { position: [80, -80, 60], target: [0, 0, 0], up: [0, 0, 1], projection: 'perspective' },
+      section: { axis: 'x', normal: [-1, 0, 0], constant: 12 },
+      note: 'see both',
+      snapshot:
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+      annotations: [
+        {
+          n: 1,
+          text: 'make this hole 0.5 mm bigger',
+          kind: 'face',
+          point: [12, 5, 4],
+          normal: [-1, 0, 0],
+          part: { id: 'main', file: 'src/main.scad', mesh: 0, color: '#b8c4d0' },
+          surface: {
+            type: 'cylindrical',
+            area: 100.5,
+            bbox: { min: [10.4, 3.4, 0], max: [13.6, 6.6, 8], size: [3.2, 3.2, 8] },
+            triangles: 64,
+            facet: {
+              normal: [-1, 0, 0],
+              area: 3.1,
+              bbox: { min: [10.4, 4.8, 0], max: [10.4, 5.2, 8], size: [0, 0.4, 8] },
+            },
+            cylinder: { axis: [0, 0, 1], center: [12, 5, 4], radius: 1.6, length: 8, arc: 360, concave: true },
+          },
+          source,
+        },
+        {
+          n: 2,
+          text: 'round this edge',
+          kind: 'edge',
+          point: [20, 0, 8],
+          normal: [0, 0, 1],
+          part: { id: 'main', file: 'src/main.scad', mesh: 0, color: '#b8c4d0' },
+          edge: { a: [0, 0, 8], b: [40, 0, 8], length: 40, angle: 90, convex: true },
+          surface: null,
+          source: { kind: 'version', version: 'v001', render: null },
+        },
+      ],
+    },
+    null,
+  )
+  const text = scad('proposal', 'clip').stdout
+  expect(text).toContain('#1 "make this hole 0.5 mm bigger"')
+  expect(text).toContain('part main (src/main.scad) color #b8c4d0, face at (12, 5, 4)')
+  expect(text).toContain('cylindrical hole/concave, d 3.2 (r 1.6), axis (0, 0, 1) through (12, 5, 4)')
+  expect(text).toContain('edge: (0, 0, 8) -> (40, 0, 8), length 40, 90 deg between faces, convex')
+  expect(text).toContain('placed on: version v001')
+  expect(text).toContain('section: kept x <= 12')
+  expect(text).toMatch(/snapshot: .*workspace\/clip\/proposals\/annotations\.png/)
+  const data = json<{ params: null; annotations: { snapshot: string; annotations: unknown[] } }>(
+    'proposal',
+    'clip',
+  ).data
+  expect(data.params).toBeNull()
+  expect(data.annotations.annotations).toHaveLength(2)
+  expect(scad('status', 'clip').stdout).toContain('ANNOTATIONS pending from the browser: 2 note(s)')
+  expect(json<{ id: string; proposal: boolean }[]>('list').data[0].proposal).toBe(true)
+  expect(scad('proposal', 'clip', '--clear').code).toBe(0)
+  expect(scad('proposal', 'clip').stdout).toContain('No pending proposal.')
 })
 
 describe.skipIf(!hasOpenscad)('with OpenSCAD', () => {

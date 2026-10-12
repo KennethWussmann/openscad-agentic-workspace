@@ -50,7 +50,7 @@ Versions
   checkpoint <project> -m "message" [--force]
   versions <project>
   restore <project> <vN> [--with-libs]   Copy vN back into src/, render, record as a new version
-  proposal <project> [--clear]           Parameter values the user sent from the browser
+  proposal <project> [--clear]           Parameter values and 3D annotations the user sent from the browser
 
 Libraries
   lib list [--project p]

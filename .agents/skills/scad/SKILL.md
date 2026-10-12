@@ -15,7 +15,7 @@ All commands run from the repository root. `pnpm scad` without arguments prints 
 | --- | --- |
 | `.agents/skills/scad-craft/SKILL.md` | Always before writing or changing `.scad` code |
 | `.agents/skills/scad-libs/SKILL.md` | Shared modules across projects, BOSL2 or other third-party libraries |
-| `.agents/skills/scad-versions/SKILL.md` | After every completed user request (checkpoint), going back, comparing, browser proposals |
+| `.agents/skills/scad-versions/SKILL.md` | After every completed user request (checkpoint), going back, comparing, browser proposals (parameters and 3D annotations) |
 | `.agents/skills/scad-export/SKILL.md` | Delivering files or preparing for printing |
 | `.agents/skills/scad-setup/SKILL.md` | `pnpm scad doctor` fails |
 
@@ -31,7 +31,7 @@ Ask only what you truly need: key dimensions, what it mates with, printer or pro
 
 New project: `pnpm scad new <id> [--name "Name"] [--description "..."]` (id is lowercase-dashed). `--from <other-project>` starts from a copy. Fill `workspace/<id>/brief.md` (requirements, key dimensions, parts, decisions) and give the user a short summary of the plan.
 
-Existing project: `pnpm scad list`, then `pnpm scad status <id>` and read its `brief.md` and sources before changing anything. If status shows a pending proposal from the browser, handle it first (scad-versions skill).
+Existing project: `pnpm scad list`, then `pnpm scad status <id>` and read its `brief.md` and sources before changing anything. If status shows a pending proposal or annotations from the browser, handle them first (scad-versions skill). When the user says "what I marked", "my notes" or "the pins", run `pnpm scad proposal <id>`.
 
 ### 2. Show it live
 
@@ -92,6 +92,7 @@ When asked for files, follow scad-export (`pnpm scad export <id>`).
 - View cube (top right) snaps to faces, edges and corners; keys 0 iso, 1 front, 2 top, 3 right, 4 back, 5 bottom, 6 left, F fit, O ortho/perspective.
 - Section (S) with X/Y/Z or free plane and hatched caps; X-ray (X); edges (E); wireframe (W); bounding box dimensions (D); measuring (M, click two points, snaps to vertices).
 - Parameter panel lists customizer parameters; the user can tweak values (rendered separately, your files stay untouched) and click "Send to agent", which writes a proposal for you.
+- Note tool (N) pins numbered notes on faces, edges and corners; the Notes panel sends them with a snapshot of the view as annotations for you. If a request is about a specific spot that is hard to describe in words, suggest the user pins a note there.
 - Version timeline at the bottom shows checkpoints; the ghost button overlays another version for comparison.
 
 ## Rules

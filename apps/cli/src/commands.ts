@@ -4,7 +4,7 @@ import path from 'node:path'
 import {
   addLibrary,
   checkpoint,
-  clearProposal,
+  clearProposals,
   createLocalLibrary,
   createProject,
   EXPORT_FORMATS,
@@ -23,7 +23,7 @@ import {
   projectLayout,
   pruneVendor,
   type RenderResult,
-  readProposal,
+  readProposals,
   readRender,
   removeLibrary,
   renderProject,
@@ -42,7 +42,7 @@ import {
   type ViewName,
   vendorRoot,
 } from '@scad/core'
-import { formatBBox, formatDiagnostic, formatRender, table } from './format.ts'
+import { formatAnnotations, formatBBox, formatDiagnostic, formatRender, table } from './format.ts'
 import { api, ensureServer, findServer, openBrowser, stopServer, viewerUrl } from './server.ts'
 
 export type Flags = {
@@ -413,25 +413,41 @@ export const restore = async (ctx: Ctx): Promise<Outcome> => {
 
 export const proposal = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
-  requireProject(paths, project)
+  const layout = requireProject(paths, project)
   if (flags.clear) {
-    clearProposal(paths, project)
-    return { data: { cleared: true }, text: 'Proposal cleared.' }
+    clearProposals(paths, project)
+    return { data: { cleared: true }, text: 'Proposals cleared.' }
   }
-  const p = readProposal(paths, project)
-  if (!p) return { data: null, text: 'No pending proposal.' }
-  const current = readRender(paths, project)?.params ?? []
-  const changes = Object.entries(p.params).map(([name, value]) => {
-    const def = current.find((c) => c.name === name)
-    return { name, from: def?.initial ?? null, to: value, unchanged: def ? sameValue(def.initial, value) : false }
-  })
-  const rows = [['PARAM', 'CURRENT', 'PROPOSED']]
-  for (const c of changes)
-    rows.push([c.name, JSON.stringify(c.from), `${JSON.stringify(c.to)}${c.unchanged ? ' (same)' : ''}`])
-  return {
-    data: { ...p, changes },
-    text: `Proposal from the browser (${p.createdAt}, based on ${p.basedOn ?? 'no version'})${p.note ? `\nNote: ${p.note}` : ''}\n${table(rows)}\nPort the values into the .scad defaults, render, then run \`pnpm scad proposal ${project} --clear\`.`,
+  const pending = readProposals(paths, project)
+  if (!pending.params && !pending.annotations)
+    return { data: { params: null, annotations: null }, text: 'No pending proposal.' }
+  const blocks: string[] = []
+  let params = null
+  if (pending.params) {
+    const p = pending.params
+    const current = readRender(paths, project)?.params ?? []
+    const changes = Object.entries(p.params).map(([name, value]) => {
+      const def = current.find((c) => c.name === name)
+      return { name, from: def?.initial ?? null, to: value, unchanged: def ? sameValue(def.initial, value) : false }
+    })
+    const rows = [['PARAM', 'CURRENT', 'PROPOSED']]
+    for (const c of changes)
+      rows.push([c.name, JSON.stringify(c.from), `${JSON.stringify(c.to)}${c.unchanged ? ' (same)' : ''}`])
+    params = { ...p, changes }
+    blocks.push(
+      `Parameters from the browser (${p.createdAt}, based on ${p.basedOn ?? 'no version'})${p.note ? `\nNote: ${p.note}` : ''}\n${table(rows)}\nPort the values into the .scad defaults.`,
+    )
   }
+  let annotations = null
+  if (pending.annotations) {
+    const snapshot = rel(paths, path.join(layout.dir, pending.annotations.snapshot))
+    annotations = { ...pending.annotations, snapshot }
+    blocks.push(
+      `${formatAnnotations(pending.annotations, snapshot)}\nRead the snapshot, find the geometry at each point in src/, confirm it with a section snapshot through the point, then apply the notes.`,
+    )
+  }
+  blocks.push(`Render, check, checkpoint, then run \`pnpm scad proposal ${project} --clear\`.`)
+  return { data: { params, annotations }, text: blocks.join('\n\n') }
 }
 
 export const serve = async ({ paths }: Ctx): Promise<Outcome> => {
@@ -556,7 +572,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
   const config = loadProjectConfig(paths, layout.config, project)
   const result = readRender(paths, project)
   const list = listVersions(paths, project)
-  const p = readProposal(paths, project)
+  const proposals = readProposals(paths, project)
   const server = await serverFor(paths)
   const data = {
     project,
@@ -565,7 +581,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     render: result,
     latestVersion: list.at(-1)?.id ?? null,
     changedSinceVersion: isDirty(paths, project),
-    proposal: p,
+    proposals,
     viewer: server ? viewerUrl(server.port, project) : null,
   }
   const lines = [
@@ -573,9 +589,13 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     result ? formatRender(result) : '  not rendered yet',
     `  versions: ${list.length}${list.length ? `, latest ${list.at(-1)?.id}` : ''}${data.changedSinceVersion ? ', working copy changed' : ''}`,
   ]
-  if (p)
+  if (proposals.params)
     lines.push(
-      `  PROPOSAL pending from the browser: ${Object.keys(p.params).join(', ')} (see \`pnpm scad proposal ${project}\`)`,
+      `  PROPOSAL pending from the browser: ${Object.keys(proposals.params.params).join(', ')} (see \`pnpm scad proposal ${project}\`)`,
+    )
+  if (proposals.annotations)
+    lines.push(
+      `  ANNOTATIONS pending from the browser: ${proposals.annotations.annotations.length} note(s) on the model (see \`pnpm scad proposal ${project}\`)`,
     )
   if (data.viewer) lines.push(`  viewer: ${data.viewer}`)
   return { data, text: lines.join('\n') }

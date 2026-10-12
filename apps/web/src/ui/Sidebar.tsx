@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { clearTweak, sendProposal } from '../api.ts'
 import { useStore } from '../store.ts'
 import { fmt } from '../viewer/Helpers.tsx'
+import { NotesPanel } from './NotesPanel.tsx'
 
 const Parts = ({ project }: { project: ProjectState }) => {
   const hidden = useStore((s) => s.hidden)
@@ -237,9 +238,9 @@ const Params = ({ project }: { project: ProjectState }) => {
           </div>
         </div>
       )}
-      {project.proposal && (
+      {project.proposals.params && (
         <p className="hint ok">
-          Sent to the agent: {Object.keys(project.proposal.params).join(', ')}. Ask it to apply the proposal.
+          Sent to the agent: {Object.keys(project.proposals.params.params).join(', ')}. Ask it to apply the proposal.
         </p>
       )}
     </section>
@@ -249,12 +250,16 @@ const Params = ({ project }: { project: ProjectState }) => {
 const Rail = ({ project }: { project: ProjectState }) => {
   const toggleSidebar = useStore((s) => s.toggleSidebar)
   const changed = useStore((s) => Object.keys(s.edits).length)
+  const notes = useStore((s) => s.notes.length)
   const params = project.render?.params.length ?? 0
   return (
     <button type="button" className="sidebar-rail" onClick={toggleSidebar} title="Show panel (B)">
       <PanelLeftOpen size={15} />
       <span className="rail-label">
         Parts <em className="mono">{project.parts.length}</em>
+      </span>
+      <span className="rail-label">
+        Notes <em className="mono">{notes}</em>
       </span>
       <span className="rail-label">
         Parameters <em className="mono">{params}</em>
@@ -277,6 +282,7 @@ export const Sidebar = ({ project }: { project: ProjectState }) => {
           </button>
         </header>
         <Parts project={project} />
+        <NotesPanel project={project} />
         <Params project={project} />
       </div>
       <div className="sidebar-rail-wrap" inert={open}>

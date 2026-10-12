@@ -21,6 +21,7 @@ import {
 } from 'three'
 import { type Display, useStore } from '../store.ts'
 import type { LoadedModel, ModelMesh } from './models.ts'
+import type { PartMeshData } from './pick.ts'
 import { sectionPlane, updateSectionPlane } from './section.ts'
 
 const PALETTE = ['#b8c4d0', '#8fb3c8', '#c8b38f', '#9fc4ae', '#c49fb4', '#a7a0cc']
@@ -78,10 +79,11 @@ type MeshProps = {
   display: Display
   clip: Plane[]
   ghost?: boolean
+  data?: PartMeshData
   onClick?: (e: ThreeEvent<MouseEvent>) => void
 }
 
-const PartMesh = ({ mesh, color, display, clip, ghost, onClick }: MeshProps) => {
+const PartMesh = ({ mesh, color, display, clip, ghost, data, onClick }: MeshProps) => {
   const material = useMemo(() => {
     if (ghost)
       return new MeshBasicMaterial({
@@ -123,7 +125,13 @@ const PartMesh = ({ mesh, color, display, clip, ghost, onClick }: MeshProps) => 
 
   return (
     <group>
-      <mesh geometry={mesh.geometry} material={material} renderOrder={ghost ? 5 : 3} onClick={onClick} />
+      <mesh
+        geometry={mesh.geometry}
+        material={material}
+        renderOrder={ghost ? 5 : 3}
+        userData={data ?? {}}
+        onClick={onClick}
+      />
       {showEdges && <lineSegments geometry={mesh.edges} material={lines} renderOrder={ghost ? 6 : 4} />}
     </group>
   )
@@ -192,13 +200,18 @@ export const ModelView = ({ models, ghosts, order, visible, extent, onPick }: Mo
         const index = order.indexOf(id)
         return (
           <group key={`${id}:${model.key}`} name={`part:${id}`}>
-            {model.meshes.map((mesh) => (
+            {model.meshes.map((mesh, n) => (
               <PartMesh
                 key={mesh.id}
                 mesh={mesh}
                 color={partColor(mesh, index, display.modelColors)}
                 display={display}
                 clip={clip}
+                data={{
+                  partId: id,
+                  mesh: n,
+                  color: mesh.isDefaultColor ? 'default' : `#${mesh.color.getHexString()}`,
+                }}
                 onClick={onPick}
               />
             ))}

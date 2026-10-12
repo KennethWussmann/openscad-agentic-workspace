@@ -1,44 +1,19 @@
 import { CameraControls, Line, OrthographicCamera, PerspectiveCamera, TransformControls } from '@react-three/drei'
 import { Canvas, type ThreeEvent, useFrame, useThree } from '@react-three/fiber'
-import type { ProjectState, RenderResult } from '@scad/core/protocol'
+import type { ProjectState } from '@scad/core/protocol'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import {
-  Box3,
-  type BufferGeometry,
-  type DirectionalLight,
-  DoubleSide,
-  type Group,
-  type Mesh,
-  Vector2,
-  Vector3,
-} from 'three'
+import { Box3, type DirectionalLight, DoubleSide, type Group, Vector3 } from 'three'
 import { fileUrl } from '../api.ts'
 import { useStore } from '../store.ts'
+import { CaptureBridge } from './capture.tsx'
 import { BuildPlate, Dimensions, Measurements } from './Helpers.tsx'
 import { ModelView } from './ModelView.tsx'
 import { type ModelRequest, useModels } from './models.ts'
+import { Notes } from './Notes.tsx'
+import { pickNote, pickPoint } from './pick.ts'
 import { applyPose, FOV, fit, ISO, rig, viewDirection } from './rig.ts'
 import { axisIndex, freeHandle, sectionPlane } from './section.ts'
-
-export type ModelSource = {
-  kind: 'working' | 'tweak' | 'version'
-  stamp: string
-  parts: { id: string; model: string | null }[]
-}
-
-export const modelSource = (project: ProjectState, versionId: string | null, tweaking: boolean): ModelSource | null => {
-  if (versionId) {
-    const v = project.versions.find((x) => x.id === versionId)
-    return v ? { kind: 'version', stamp: v.id, parts: v.parts } : null
-  }
-  const pick = (kind: ModelSource['kind'], r: RenderResult): ModelSource => ({
-    kind,
-    stamp: r.finishedAt,
-    parts: r.parts.map((p) => ({ id: p.id, model: p.model })),
-  })
-  if (tweaking && project.tweak?.parts.some((p) => p.model)) return pick('tweak', project.tweak)
-  return project.render ? pick('working', project.render) : null
-}
+import { annotationSource, type ModelSource, modelSource } from './source.ts'
 
 const requestsFor = (project: string, source: ModelSource | null, prefix = ''): ModelRequest[] =>
   source
@@ -144,35 +119,6 @@ const FreeGizmo = ({ extent }: { extent: number }) => {
   )
 }
 
-const SNAP_PX = 10
-
-const pickPoint = (e: ThreeEvent<MouseEvent>, sectionOn: boolean): Vector3 | null => {
-  const hit = e.intersections.find(
-    (i) => (i.object as Mesh).isMesh && (!sectionOn || sectionPlane.distanceToPoint(i.point) >= -1e-4),
-  )
-  if (!hit) return null
-  const point = hit.point.clone()
-  if (!hit.face) return point
-  const geo = (hit.object as Mesh).geometry as BufferGeometry
-  const pos = geo.getAttribute('position')
-  const { width, height } = (e.nativeEvent.target as HTMLElement).getBoundingClientRect()
-  const pointer = new Vector2(e.pointer.x, e.pointer.y)
-  let best: Vector3 | null = null
-  let bestDist = SNAP_PX
-  for (const idx of [hit.face.a, hit.face.b, hit.face.c]) {
-    const vtx = new Vector3().fromBufferAttribute(pos, idx).applyMatrix4(hit.object.matrixWorld)
-    const ndc = vtx.clone().project(e.camera)
-    const dx = ((ndc.x - pointer.x) * width) / 2
-    const dy = ((ndc.y - pointer.y) * height) / 2
-    const d = Math.hypot(dx, dy)
-    if (d < bestDist) {
-      bestDist = d
-      best = vtx
-    }
-  }
-  return best ?? point
-}
-
 export type ViewportProps = { project: ProjectState }
 
 export const Viewport = ({ project }: ViewportProps) => {
@@ -188,6 +134,9 @@ export const Viewport = ({ project }: ViewportProps) => {
   const pending = useStore((s) => s.pending)
   const fitToken = useStore((s) => s.fitToken)
   const addPoint = useStore((s) => s.addPoint)
+  const addNote = useStore((s) => s.addNote)
+  const closeEditor = useStore((s) => s.closeEditor)
+  const embed = useStore((s) => s.embed)
   const setSection = useStore((s) => s.setSection)
 
   const tweaking = Object.keys(edits).length > 0
@@ -244,12 +193,17 @@ export const Viewport = ({ project }: ViewportProps) => {
 
   const onPick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
-      if (tool !== 'measure' || e.delta > 4) return
+      if (tool === 'orbit' || e.delta > 4 || (tool === 'annotate' && embed)) return
       e.stopPropagation()
-      const p = pickPoint(e, section.enabled)
-      if (p) addPoint(p.toArray() as [number, number, number])
+      if (tool === 'measure') {
+        const p = pickPoint(e, section.enabled)
+        if (p) addPoint(p.toArray() as [number, number, number])
+        return
+      }
+      const note = pickNote(e, section.enabled, project.parts, annotationSource(project, versionId, edits))
+      if (note) addNote(note)
     },
-    [tool, section.enabled, addPoint],
+    [tool, embed, section.enabled, addPoint, addNote, project, versionId, edits],
   )
 
   return (
@@ -260,14 +214,19 @@ export const Viewport = ({ project }: ViewportProps) => {
       onCreated={({ gl }) => {
         gl.localClippingEnabled = true
       }}
+      onPointerMissed={(e) => {
+        if (e.type === 'click') closeEditor()
+      }}
     >
       <CameraRig />
+      <CaptureBridge />
       {display.grid && <BuildPlate extent={extent} />}
       <ModelView models={models} ghosts={ghosts} order={order} visible={visible} extent={extent} onPick={onPick} />
       {display.dims && <Dimensions box={box} />}
       {section.enabled && section.axis !== 'free' && <SectionOutline extent={extent} />}
       {section.enabled && section.axis === 'free' && <FreeGizmo extent={extent} />}
       <Measurements measures={measures} pending={pending} />
+      {!embed && <Notes extent={extent} sent={project.proposals.annotations?.annotations ?? []} />}
     </Canvas>
   )
 }

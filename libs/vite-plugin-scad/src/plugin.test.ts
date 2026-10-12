@@ -70,6 +70,49 @@ it('stores and clears parameter proposals from the browser', async () => {
   expect(() => readFileSync(file)).toThrow()
 })
 
+it('stores annotations with their snapshot, serves the snapshot and rejects invalid ones', async () => {
+  const snapshot =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  const source = { kind: 'working', version: null, render: null }
+  const body = {
+    source,
+    camera: { position: [1, 1, 1], target: [0, 0, 0], up: [0, 0, 1], projection: 'perspective' },
+    section: null,
+    snapshot,
+    annotations: [
+      {
+        n: 1,
+        text: 'round this edge',
+        kind: 'edge',
+        point: [0, 0, 20],
+        normal: [0, 0, 1],
+        part: { id: 'main', file: 'src/main.scad', mesh: 0, color: '#ffffff' },
+        edge: { a: [0, 0, 20], b: [40, 0, 20], length: 40, angle: 90, convex: true },
+        surface: null,
+        source,
+      },
+    ],
+  }
+  const post = (payload: unknown) =>
+    fetch(`${url}/projects/box/annotations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  const res = await post(body)
+  expect(res.status).toBe(200)
+  expect(await res.json()).toMatchObject({ count: 1, file: expect.stringMatching(/proposals\/annotations\.json$/) })
+  const file = path.join(workspace, 'box', 'proposals', 'annotations.json')
+  expect(JSON.parse(readFileSync(file, 'utf8'))).toMatchObject({ snapshot: 'proposals/annotations.png' })
+  const image = await fetch(`${url}/projects/box/file/proposals/annotations.png`)
+  expect(image.headers.get('content-type')).toBe('image/png')
+  const state = (await (await fetch(`${url}/projects/box`)).json()) as { proposals: { annotations: unknown } }
+  expect(state.proposals.annotations).not.toBeNull()
+  expect((await post({ ...body, annotations: [] })).status).toBe(400)
+  expect((await fetch(`${url}/projects/box/annotations`, { method: 'DELETE' })).status).toBe(200)
+  expect(() => readFileSync(file)).toThrow()
+})
+
 it('reports connected viewers and accepts navigation', async () => {
   expect(await (await fetch(`${url}/viewers`)).json()).toEqual({ total: 0, projects: {} })
   const nav = await fetch(`${url}/navigate`, {

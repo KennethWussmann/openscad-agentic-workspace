@@ -1,4 +1,5 @@
 import {
+  type AnnotationInput,
   API,
   type ChangedEvent,
   type DefineValue,
@@ -43,6 +44,15 @@ export const sendProposal = (id: string, params: Record<string, DefineValue>, no
 
 export const discardProposal = (id: string) =>
   request(`/projects/${encodeURIComponent(id)}/proposal`, { method: 'DELETE' })
+
+export const sendAnnotations = (id: string, input: AnnotationInput) =>
+  request<{ file: string; count: number }>(`/projects/${encodeURIComponent(id)}/annotations`, {
+    method: 'POST',
+    body: input,
+  })
+
+export const withdrawAnnotations = (id: string) =>
+  request(`/projects/${encodeURIComponent(id)}/annotations`, { method: 'DELETE' })
 
 export const fileUrl = (project: string, rel: string, stamp: string) =>
   `${API}/projects/${encodeURIComponent(project)}/file/${rel.split('/').map(encodeURIComponent).join('/')}?v=${encodeURIComponent(stamp)}`

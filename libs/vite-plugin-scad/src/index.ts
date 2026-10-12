@@ -4,7 +4,8 @@ import {
   API,
   APP_ID,
   type ChangedEvent,
-  clearProposal,
+  clearAnnotations,
+  clearParamProposal,
   type DefineValue,
   EVENTS,
   findRepoRoot,
@@ -12,6 +13,7 @@ import {
   isInside,
   isProjectId,
   listProjects,
+  MAX_SNAPSHOT_BYTES,
   type NavigateEvent,
   type Paths,
   type PresenceEvent,
@@ -26,7 +28,8 @@ import {
   resolveOpenscad,
   resolvePaths,
   toPosix,
-  writeProposal,
+  writeAnnotations,
+  writeParamProposal,
 } from '@scad/core'
 import type { Connect, Plugin, ViteDevServer } from 'vite'
 import { createCoordinator, type RenderKind } from './coordinator.ts'
@@ -42,7 +45,8 @@ type Res = Parameters<Connect.NextHandleFunction>[1]
 
 const MAX_BODY = 1024 * 1024
 const PRESENCE_TTL = 20000
-const SERVED = ['preview/', 'versions/', 'temp/tweak/', 'out/']
+const MAX_ANNOTATION_BODY = Math.ceil(MAX_SNAPSHOT_BYTES * 1.4) + MAX_BODY
+const SERVED = ['preview/', 'versions/', 'temp/tweak/', 'out/', 'proposals/']
 const TYPES: Record<string, string> = {
   '.3mf': 'model/3mf',
   '.png': 'image/png',
@@ -57,13 +61,13 @@ const json = (res: Res, status: number, body: unknown) => {
   res.end(JSON.stringify(body))
 }
 
-const readBody = (req: Connect.IncomingMessage) =>
+const readBody = (req: Connect.IncomingMessage, limit = MAX_BODY) =>
   new Promise<unknown>((resolve, reject) => {
     let size = 0
     const chunks: Buffer[] = []
     req.on('data', (c: Buffer) => {
       size += c.length
-      if (size > MAX_BODY) reject(new Error('Body too large'))
+      if (size > limit) reject(new Error('Body too large'))
       else chunks.push(c)
     })
     req.on('end', () => {
@@ -250,17 +254,41 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
       const body = (await readBody(req)) as { params?: Record<string, DefineValue>; note?: string }
       if (!body.params || !Object.keys(body.params).length) return json(res, 400, { error: 'no params' })
       const state = projectState(paths, id)
-      writeProposal(paths, id, {
+      writeParamProposal(paths, id, {
         params: body.params,
         ...(body.note ? { note: body.note } : {}),
         createdAt: new Date().toISOString(),
         basedOn: state.versions.at(-1)?.id ?? null,
       })
       changed(id)
-      return json(res, 200, { ok: true, file: toPosix(path.relative(paths.root, projectLayout(paths, id).proposal)) })
+      return json(res, 200, {
+        ok: true,
+        file: toPosix(path.relative(paths.root, projectLayout(paths, id).paramProposal)),
+      })
     }
     if (method === 'DELETE' && action === 'proposal') {
-      clearProposal(paths, id)
+      clearParamProposal(paths, id)
+      changed(id)
+      return json(res, 200, { ok: true })
+    }
+    if (method === 'POST' && action === 'annotations') {
+      const body = await readBody(req, MAX_ANNOTATION_BODY)
+      const basedOn = projectState(paths, id).versions.at(-1)?.id ?? null
+      let proposal: ReturnType<typeof writeAnnotations>
+      try {
+        proposal = writeAnnotations(paths, id, body, basedOn)
+      } catch (e) {
+        return json(res, 400, { error: e instanceof Error ? e.message : String(e) })
+      }
+      changed(id)
+      return json(res, 200, {
+        ok: true,
+        count: proposal.annotations.length,
+        file: toPosix(path.relative(paths.root, projectLayout(paths, id).annotations)),
+      })
+    }
+    if (method === 'DELETE' && action === 'annotations') {
+      clearAnnotations(paths, id)
       changed(id)
       return json(res, 200, { ok: true })
     }

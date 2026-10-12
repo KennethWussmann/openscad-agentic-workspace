@@ -49,7 +49,10 @@ export const projectLayout = (paths: Paths, id: string) => {
     sheet: path.join(dir, 'preview', 'sheet.png'),
     out: path.join(dir, 'out'),
     versions: path.join(dir, 'versions'),
-    proposal: path.join(dir, 'proposals', 'params.json'),
+    proposals: path.join(dir, 'proposals'),
+    paramProposal: path.join(dir, 'proposals', 'params.json'),
+    annotations: path.join(dir, 'proposals', 'annotations.json'),
+    annotationsSnapshot: path.join(dir, 'proposals', 'annotations.png'),
     temp: path.join(dir, 'temp'),
     tweak: path.join(dir, 'temp', 'tweak'),
   }
