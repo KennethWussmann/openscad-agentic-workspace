@@ -6,3 +6,4 @@ dist
 /config.yaml
 /.scratch
 .test-tmp
+.DS_Store
