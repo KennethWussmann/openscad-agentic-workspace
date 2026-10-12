@@ -27,7 +27,7 @@ All commands run from the repository root. `pnpm scad` without arguments prints 
 
 ### 1. Understand and propose
 
-Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. Measurements of the real counterpart beat guesses; ask for them. Infer the rest and state your assumptions.
+Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed and the brief names no printer, ask for the bed size and nozzle once; if the user does not know, keep the defaults (256 x 256 x 256 mm, 0.4 mm) and say so. Write a named printer into the project's `config.yaml` under `printer` and note it in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. Infer the rest and state your assumptions.
 
 New project: `pnpm scad new <id> [--name "Name"] [--description "..."]` (id is lowercase-dashed). `--from <other-project>` starts from a copy. Fill `workspace/<id>/brief.md` (requirements, key dimensions, parts, decisions) and give the user a short summary of the plan.
 
@@ -75,7 +75,7 @@ Be a harsh critic: does it match the brief, will it print without supports where
 
 ### 4b. Check printability
 
-Before every checkpoint and every export:
+Before every checkpoint and every export, and also right after any build step that adds thin features (ribs, lips, clips, text, shells) or downward-facing geometry (bridges, ceilings, horizontal holes, undercuts). Finding a problem in the step that caused it is cheaper than at the end:
 
 ```bash
 pnpm scad check <id>
@@ -89,7 +89,14 @@ It analyses the rendered meshes in `preview/` (it renders first if the sources c
 - **walls:** thickness measured inwards from every triangle. WARN under `minWall` (default 2 x nozzle), FAIL when the thinnest 0.1 mm2 patch of a region is under the nozzle. This is approximate: one ray per triangle, only walls with roughly opposite faces count, and gaps between parts are not measured. Confirm findings with a section snapshot through the reported centre.
 - **bodies:** solids, enclosed voids, bodies floating above the bed, and bodies smaller than `minWall` (WARN).
 
-Exit code 1 means at least one FAIL. Fix FAILs before checkpointing unless the user accepts them. Mention WARNs that matter in your reply. The full result is in `preview/check.json` (`--json` prints it). Use `--part a,b` to check a subset; that does not write `check.json`. `checkpoint`, `export` and `status` note when the check is missing, outdated or failed.
+Exit code 1 means at least one FAIL. How to handle the result:
+
+1. Read `## Decisions` in `brief.md` first. A finding the user already accepted there (same check, same feature) is not raised again; mention it only if it got worse.
+2. Fix every other FAIL with the fixes table in scad-craft ("Fixing check findings"), then render and check again. Fix the parameter or module that causes it, not the symptom.
+3. If a FAIL is still there after two fix attempts, or fixing it would change the design the user asked for (a knife edge that is the point of the feature, a part larger than the bed), stop and ask the user: explain the finding, the options and their cost. Do not keep iterating and do not checkpoint over it silently.
+4. When the user accepts a FAIL or WARN, record it under `## Decisions` in `brief.md` with the check, the feature and the reason, e.g. "walls: groove lips taper to 0 mm at the helix run-out, accepted (cosmetic, prints fine)".
+5. WARNs: fix the cheap ones (a chamfer instead of a fillet on a downward edge, a part 0.2 mm above the bed). Mention the rest in your reply, especially overhangs that need supports.
+6. Do not lower thresholds in `config.yaml` to make a check pass. Only change `printer` or `check` when the user's printer or process differs. The full result is in `preview/check.json` (`--json` prints it). Use `--part a,b` to check a subset; that does not write `check.json`. `checkpoint`, `export` and `status` note when the check is missing, outdated or failed.
 
 In the viewer, the user can toggle an overhang heatmap (H) and a wall-thickness overlay (T). Both use the same thresholds and follow every re-render, so you can point them at a region ("turn on Walls (T): the red band on the rim is 0.3 mm").
 

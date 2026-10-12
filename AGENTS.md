@@ -30,6 +30,6 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 
 - Model files live only in `workspace/<project>/`. Never put models anywhere else and never edit `preview/`, `versions/` or `out/` by hand.
 - Use `pnpm scad` for renders, exports, versions and libraries instead of calling OpenSCAD directly; it applies the config, library paths and keeps the viewer in sync.
-- Run `pnpm scad check <project>` before every checkpoint and export. Fix FAILs (non-manifold, does not fit the bed, walls under the nozzle) or explain them to the user. Printer and thresholds live in `printer` and `check` in `config.yaml`.
+- Run `pnpm scad check <project>` before every checkpoint and export. Fix FAILs (non-manifold, does not fit the bed, walls under the nozzle) or explain them to the user. After two failed fix attempts, ask the user. Record accepted findings in `brief.md` under Decisions so they are not raised again. Never lower thresholds to make a check pass. Printer and thresholds live in `printer` and `check` in `config.yaml`.
 - Do not change the viewer, CLI or libraries to make a model work. If the tooling lacks something, tell the user.
 - Development on the tooling itself: `pnpm typecheck`, `pnpm test`, `pnpm lint` (Biome) from the root. OpenSCAD-dependent tests skip themselves when OpenSCAD is not installed.

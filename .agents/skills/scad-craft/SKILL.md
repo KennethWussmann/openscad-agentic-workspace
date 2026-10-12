@@ -100,6 +100,23 @@ Unless the brief says otherwise, assume FDM with a 0.4 mm nozzle. `printer` and 
 - Metric screw reference (clearance hole / head diameter / head height): M2 2.4/3.8/2, M2.5 2.9/4.5/2.5, M3 3.4/5.5/3, M4 4.5/7/4, M5 5.5/8.5/5. Heat-set inserts M3: about 4.0-4.2 mm hole, 5-6 mm deep. Hex nut M3: 5.5 mm across flats, 2.4 mm thick (model the hole at flats + 0.3 mm, `$fn = 6`, rotated so flats are parallel to the build plate edges where it matters).
 - State the assumptions you made in `brief.md`.
 
+## Fixing check findings
+
+What `pnpm scad check` reports and the usual fix. Confirm the location with a section snapshot through the reported centre before changing code.
+
+| Finding | Usual cause | Fix |
+| --- | --- | --- |
+| manifold: open or non-manifold edges | `polyhedron()` with wrong or missing faces; two solids touching along an edge or a point | Fix the face list and winding; make touching solids overlap by `eps` or separate them |
+| manifold: flipped faces / inside out | `polyhedron()` faces wound the wrong way | Reverse the face order (OpenSCAD wants faces clockwise seen from outside) |
+| manifold: folded edges (fins, flaps) | A face ends exactly on another face, coincident faces in `difference()`, a sweep ending on the face it joins | Extend the cutter or the sweep past the face by `eps` or about 1 deg; avoid coplanar faces in booleans |
+| bed: does not fit | Part larger than `printer.bed` | Rotate the print orientation, split into parts with joints, or ask the user to scale |
+| bed: lowest point not at z = 0 | Model offset or a feature below the base | Translate the part onto the bed in its print orientation |
+| overhangs | Fillets on downward edges, horizontal holes, ceilings, undercuts | 45 deg chamfers, teardrop or flat-topped holes, reorient the part, split it, or tell the user supports are needed |
+| walls: thin (WARN or FAIL) | Wall parameter too small, derived values going negative, a feature tapering to a point | Raise the parameter, add `assert(wall >= ...)` for derived thickness, end tapers in a flat of at least the nozzle width or a round |
+| bodies: floating | Feature not unioned with the body, or sitting above it by rounding | Overlap it with the body by `eps`, or move it onto the bed or into its own part |
+| bodies: small | Leftover slivers from `difference()` | Extend the cutter by `eps` so it cuts through completely |
+| bodies: enclosed void | Hollow inside a solid | Intended for some prints; otherwise remove it or tell the user it will be filled with infill or trap support |
+
 ## Multi-part projects
 
 Declare parts in the project `config.yaml`; each part is rendered to its own model and shown together as an assembly in the viewer:

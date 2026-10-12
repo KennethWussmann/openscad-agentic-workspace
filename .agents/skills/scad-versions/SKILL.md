@@ -17,7 +17,7 @@ pnpm scad check <id>
 pnpm scad checkpoint <id> -m "Wider base, two M3 mounting holes"
 ```
 
-- Fix FAILs from `check` first, or explain them to the user if they are intended. `checkpoint` adds a note when the check is missing, older than the render or failed.
+- Fix FAILs from `check` first, or explain them to the user if they are intended. Findings the user accepted are recorded under `## Decisions` in `brief.md` (scad skill, step 4b) and do not block the checkpoint. `checkpoint` adds a note when the check is missing, older than the render or failed.
 
 - The message says what changed for the user, not how ("Lid snaps on tighter", "Holes for 6 mm cable"). It shows up in the timeline.
 - `checkpoint` refuses when the last render failed, when files changed after the last render (render again) or when nothing changed since the latest version (`--force` overrides, rarely needed).
