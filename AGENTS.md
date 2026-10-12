@@ -11,7 +11,7 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 | Skill | Load when |
 | --- | --- |
 | `.agents/skills/scad-setup/SKILL.md` | Fresh clone, `doctor` fails, Node/pnpm/OpenSCAD missing, dependencies not installed |
-| `.agents/skills/scad/SKILL.md` | Any modelling request: new model, change a model, show a model. Entry point of the workflow |
+| `.agents/skills/scad/SKILL.md` | Any modelling request: new model, change a model, show a model, printability check. Entry point of the workflow |
 | `.agents/skills/scad-craft/SKILL.md` | Always when writing or changing `.scad` files |
 | `.agents/skills/scad-libs/SKILL.md` | Reusable modules across projects, third-party libraries (BOSL2 and others), threads, rounding, attachments |
 | `.agents/skills/scad-versions/SKILL.md` | Checkpoints, "go back to", comparing versions, proposals the user sent from the browser: parameter values and 3D annotations (notes pinned on faces, edges and corners, with a snapshot) |
@@ -21,7 +21,7 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 
 - `apps/cli` (`pnpm scad`): deterministic commands for the agent. Run `pnpm scad` without arguments for the command reference; add `--json` for machine-readable output.
 - `apps/web`: React + three.js viewer, served by Vite.
-- `libs/core`: config, OpenSCAD discovery, rendering, versions, libraries, exports.
+- `libs/core`: config, OpenSCAD discovery, rendering, versions, libraries, exports, printability check (`check.ts` runs in Node and in the viewer).
 - `libs/vite-plugin-scad`: dev-server API, file watcher that re-renders on save, live push to the viewer.
 - `workspace/` (gitignored): all models. `workspace/<project>/`, shared libraries in `workspace/_libs/`, third-party checkouts in `workspace/_vendor/`.
 - `config.yaml` (gitignored, created from `config.example.yaml`): workspace settings; each project's `config.yaml` overrides them.
@@ -30,5 +30,6 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 
 - Model files live only in `workspace/<project>/`. Never put models anywhere else and never edit `preview/`, `versions/` or `out/` by hand.
 - Use `pnpm scad` for renders, exports, versions and libraries instead of calling OpenSCAD directly; it applies the config, library paths and keeps the viewer in sync.
+- Run `pnpm scad check <project>` before every checkpoint and export. Fix FAILs (non-manifold, does not fit the bed, walls under the nozzle) or explain them to the user. Printer and thresholds live in `printer` and `check` in `config.yaml`.
 - Do not change the viewer, CLI or libraries to make a model work. If the tooling lacks something, tell the user.
 - Development on the tooling itself: `pnpm typecheck`, `pnpm test`, `pnpm lint` (Biome) from the root. OpenSCAD-dependent tests skip themselves when OpenSCAD is not installed.

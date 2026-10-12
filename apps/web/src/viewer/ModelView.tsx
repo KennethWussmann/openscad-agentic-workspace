@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import {
   AlwaysStencilFunc,
   BackSide,
+  type BufferGeometry,
   Color,
   DecrementWrapStencilOp,
   DoubleSide,
@@ -20,6 +21,7 @@ import {
   Vector3,
 } from 'three'
 import { type Display, useStore } from '../store.ts'
+import type { Heat } from './analysis.ts'
 import type { LoadedModel, ModelMesh } from './models.ts'
 import type { PartMeshData } from './pick.ts'
 import { sectionPlane, updateSectionPlane } from './section.ts'
@@ -79,11 +81,15 @@ type MeshProps = {
   display: Display
   clip: Plane[]
   ghost?: boolean
+  heat?: BufferGeometry
   data?: PartMeshData
   onClick?: (e: ThreeEvent<MouseEvent>) => void
 }
 
-const PartMesh = ({ mesh, color, display, clip, ghost, data, onClick }: MeshProps) => {
+const WHITE = new Color('#ffffff')
+
+const PartMesh = ({ mesh, color, display, clip, ghost, heat, data, onClick }: MeshProps) => {
+  const painted = Boolean(heat)
   const material = useMemo(() => {
     if (ghost)
       return new MeshBasicMaterial({
@@ -94,7 +100,8 @@ const PartMesh = ({ mesh, color, display, clip, ghost, data, onClick }: MeshProp
         side: DoubleSide,
       })
     const m = new MeshStandardMaterial({
-      color,
+      color: painted ? WHITE : color,
+      vertexColors: painted,
       roughness: 0.62,
       metalness: 0.04,
       polygonOffset: true,
@@ -109,7 +116,7 @@ const PartMesh = ({ mesh, color, display, clip, ghost, data, onClick }: MeshProp
       m.depthWrite = false
     }
     return m
-  }, [ghost, color, display.wireframe, display.xray, clip.length])
+  }, [ghost, color, painted, display.wireframe, display.xray, clip.length])
   useEffect(() => () => material.dispose(), [material])
   material.clippingPlanes = clip
 
@@ -126,7 +133,7 @@ const PartMesh = ({ mesh, color, display, clip, ghost, data, onClick }: MeshProp
   return (
     <group>
       <mesh
-        geometry={mesh.geometry}
+        geometry={heat ?? mesh.geometry}
         material={material}
         renderOrder={ghost ? 5 : 3}
         userData={data ?? {}}
@@ -179,10 +186,11 @@ export type ModelViewProps = {
   order: string[]
   visible: string[]
   extent: number
+  heat?: Heat
   onPick?: (e: ThreeEvent<MouseEvent>) => void
 }
 
-export const ModelView = ({ models, ghosts, order, visible, extent, onPick }: ModelViewProps) => {
+export const ModelView = ({ models, ghosts, order, visible, extent, heat, onPick }: ModelViewProps) => {
   const display = useStore((s) => s.display)
   const section = useStore((s) => s.section)
   useFrame(() => {
@@ -207,6 +215,7 @@ export const ModelView = ({ models, ghosts, order, visible, extent, onPick }: Mo
                 color={partColor(mesh, index, display.modelColors)}
                 display={display}
                 clip={clip}
+                heat={heat?.[mesh.id]}
                 data={{
                   partId: id,
                   mesh: n,

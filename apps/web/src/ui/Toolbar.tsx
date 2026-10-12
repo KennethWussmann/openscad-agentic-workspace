@@ -1,6 +1,8 @@
 import type { Vec3 } from '@scad/core/protocol'
 import {
+  ArrowDownFromLine,
   Box,
+  Columns2,
   Crosshair,
   FlipVertical2,
   Grid3x3,
@@ -50,6 +52,11 @@ const DISPLAY: { key: keyof Display; label: string; shortcut: string; icon: Reac
   { key: 'wireframe', label: 'Wireframe', shortcut: 'W', icon: <Layers size={16} /> },
   { key: 'grid', label: 'Plate', shortcut: 'G', icon: <Grid3x3 size={16} /> },
   { key: 'dims', label: 'Bounds', shortcut: 'D', icon: <Box size={16} /> },
+]
+
+const ANALYSIS: { key: keyof Display; label: string; shortcut: string; icon: ReactNode }[] = [
+  { key: 'overhangs', label: 'Overhang', shortcut: 'H', icon: <ArrowDownFromLine size={16} /> },
+  { key: 'walls', label: 'Walls', shortcut: 'T', icon: <Columns2 size={16} /> },
 ]
 
 const AXES: Axis[] = ['x', 'y', 'z', 'free']
@@ -150,6 +157,19 @@ export const Toolbar = () => {
       </div>
       <div className="tool-group">
         {DISPLAY.map((d) => (
+          <ToolButton
+            key={d.key}
+            label={d.label}
+            shortcut={d.shortcut}
+            active={display[d.key]}
+            onClick={() => toggle(d.key)}
+          >
+            {d.icon}
+          </ToolButton>
+        ))}
+      </div>
+      <div className="tool-group">
+        {ANALYSIS.map((d) => (
           <ToolButton
             key={d.key}
             label={d.label}

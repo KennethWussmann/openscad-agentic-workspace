@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { Vector3 } from 'three'
 import { announce, clearTweak, connect, fetchProject, fetchProjects, requestTweak } from './api.ts'
 import { useStore } from './store.ts'
-import { Console, Diagnostics, Help, TitleBlock } from './ui/Overlays.tsx'
+import { AnalysisLegend, Console, Diagnostics, Help, TitleBlock } from './ui/Overlays.tsx'
 import { Sidebar } from './ui/Sidebar.tsx'
 import { Timeline } from './ui/Timeline.tsx'
 import { Toolbar, toggleOrtho } from './ui/Toolbar.tsx'
@@ -116,6 +116,8 @@ const useKeys = () => {
         w: () => s.toggleDisplay('wireframe'),
         g: () => s.toggleDisplay('grid'),
         d: () => s.toggleDisplay('dims'),
+        h: () => s.toggleDisplay('overhangs'),
+        t: () => s.toggleDisplay('walls'),
         s: () => s.setSection({ enabled: !s.section.enabled }),
         m: () => s.setTool(s.tool === 'measure' ? 'orbit' : 'measure'),
         n: () => {
@@ -222,6 +224,7 @@ export const App = () => {
               <div className="tool-hint mono">click a face, edge or corner to pin a note</div>
             )}
             {!embed && <TitleBlock project={project} />}
+            {!embed && <AnalysisLegend project={project} />}
             <Console project={project} />
             {!embed && <Timeline project={project} />}
           </section>

@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./check": "./src/check.ts",
     "./protocol": "./src/protocol.ts",
     "./surface": "./src/surface.ts"
   },

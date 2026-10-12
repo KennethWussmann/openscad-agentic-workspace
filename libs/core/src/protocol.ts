@@ -235,11 +235,96 @@ export type ProjectSummary = {
   proposal: boolean
 }
 
+export type CheckStatus = 'pass' | 'warn' | 'fail'
+
+export type CheckSettings = {
+  bed: Vec3
+  nozzle: number
+  overhangAngle: number
+  minWall: number
+  minRegionArea: number
+}
+
+export type CheckRegion = {
+  area: number
+  bbox: BBox
+  center: Vec3
+  worst: number
+  triangles: number
+}
+
+export type ManifoldCheck = {
+  status: CheckStatus
+  openEdges: number
+  nonManifoldEdges: number
+  flippedEdges: number
+  degenerate: number
+  inverted: boolean
+  samples: Vec3[]
+  foldedEdges: number
+  foldedLength: number
+  folds: Vec3[]
+}
+
+export type BedCheck = {
+  status: CheckStatus
+  size: Vec3
+  bed: Vec3
+  fits: boolean
+  fitsRotated: boolean
+  minZ: number
+}
+
+export type RegionCheck = {
+  status: CheckStatus
+  area: number
+  worst: number | null
+  regions: CheckRegion[]
+}
+
+export type Body = {
+  bbox: BBox
+  volume: number
+  triangles: number
+}
+
+export type BodiesCheck = {
+  status: CheckStatus
+  bodies: number
+  voids: number
+  floating: Body[]
+  small: Body[]
+}
+
+export type PartCheck = {
+  id: string
+  label?: string
+  status: CheckStatus
+  triangles: number
+  bbox: BBox | null
+  durationMs: number
+  manifold: ManifoldCheck
+  bed: BedCheck
+  overhangs: RegionCheck
+  walls: RegionCheck
+  bodies: BodiesCheck
+}
+
+export type CheckResult = {
+  project: string
+  status: CheckStatus
+  checkedAt: string
+  render: string
+  settings: CheckSettings
+  parts: PartCheck[]
+}
+
 export type ProjectState = {
   id: string
   name: string
   description: string
   parts: PartDef[]
+  checkSettings: CheckSettings
   render: RenderResult | null
   tweak: RenderResult | null
   rendering: boolean

@@ -1,12 +1,19 @@
-import type {
-  Annotation,
-  AnnotationProposal,
-  AnnotationSource,
-  BBox,
-  Diagnostic,
-  RenderResult,
-  Surface,
-  ViewSection,
+import {
+  type Annotation,
+  type AnnotationProposal,
+  type AnnotationSource,
+  type BBox,
+  BED_TOLERANCE,
+  type Body,
+  type CheckRegion,
+  type CheckResult,
+  type CheckSettings,
+  type Diagnostic,
+  FOLD_ANGLE,
+  type PartCheck,
+  type RenderResult,
+  type Surface,
+  type ViewSection,
 } from '@scad/core'
 
 const num = (n: number) => (Math.abs(n) >= 100 ? n.toFixed(1) : n.toFixed(2)).replace(/\.?0+$/, '')
@@ -108,3 +115,98 @@ export const formatAnnotations = (p: AnnotationProposal, snapshot: string) =>
     '',
     ...p.annotations.map((a) => formatAnnotation(a, p.source)),
   ].join('\n')
+
+const LABEL = { pass: 'PASS', warn: 'WARN', fail: 'FAIL' } as const
+
+const MAX_LISTED = 5
+
+const formatRegions = (regions: CheckRegion[], total: number, describe: (r: CheckRegion) => string) => {
+  const lines = regions
+    .slice(0, MAX_LISTED)
+    .map((r) => `           - ${describe(r)}, ${num(r.area)} mm2 around ${vec(r.center)}, box ${formatBox(r.bbox)}`)
+  if (total > MAX_LISTED) lines.push(`           ... ${total - MAX_LISTED} more`)
+  return lines
+}
+
+const formatBody = (b: Body) => `${b.bbox.size.map(num).join(' x ')} mm at ${vec(b.bbox.min)}`
+
+export const formatCheckPart = (p: PartCheck, s: CheckSettings) => {
+  const row = (status: keyof typeof LABEL, name: string, text: string) =>
+    `    ${LABEL[status]}  ${name.padEnd(10)} ${text}`
+  const m = p.manifold
+  const problems = [
+    m.openEdges && `${m.openEdges} open edges`,
+    m.nonManifoldEdges && `${m.nonManifoldEdges} non-manifold edges`,
+    m.flippedEdges && `${m.flippedEdges} edges with flipped faces`,
+    m.inverted && 'inside out (all normals point inwards)',
+  ].filter(Boolean)
+  const lines = [`  part ${p.id}${p.label ? ` (${p.label})` : ''}: ${LABEL[p.status]}  ${p.triangles} triangles`]
+  lines.push(
+    row(
+      m.status,
+      'manifold',
+      `${problems.length ? problems.join(', ') : 'watertight'}${m.degenerate ? `, ${m.degenerate} degenerate triangles (ignored by slicers)` : ''}`,
+    ),
+  )
+  if (m.samples.length) lines.push(`           at ${m.samples.slice(0, MAX_LISTED).map(vec).join(', ')}`)
+  if (m.foldedEdges)
+    lines.push(
+      `           ${m.foldedEdges} edges (${num(m.foldedLength)} mm) fold back more than ${FOLD_ANGLE} deg: zero-thickness fins or flaps, usually from faces ending exactly on another face`,
+      `           at ${m.folds.slice(0, MAX_LISTED).map(vec).join(', ')}`,
+    )
+  const b = p.bed
+  const size = b.size.map(num).join(' x ')
+  const bed = b.bed.map(num).join(' x ')
+  const bedText =
+    b.fits || b.fitsRotated
+      ? `${size} mm fits ${bed}${b.fits ? '' : ' only rotated 90 deg around Z'}`
+      : `${size} mm does not fit the ${bed} mm build volume`
+  lines.push(
+    row(
+      b.status,
+      'bed',
+      `${bedText}${Math.abs(b.minZ) > BED_TOLERANCE ? `, lowest point at z = ${num(b.minZ)} instead of 0` : ''}`,
+    ),
+  )
+  const o = p.overhangs
+  lines.push(
+    row(
+      o.status,
+      'overhangs',
+      o.regions.length
+        ? `${num(o.area)} mm2 steeper than ${num(s.overhangAngle)} deg in ${o.regions.length} region(s), up to ${num(o.worst ?? 0)} deg (90 = flat ceiling or bridge)`
+        : `none steeper than ${num(s.overhangAngle)} deg`,
+    ),
+    ...formatRegions(o.regions, o.regions.length, (r) => `up to ${num(r.worst)} deg`),
+  )
+  const w = p.walls
+  lines.push(
+    row(
+      w.status,
+      'walls',
+      w.regions.length
+        ? `${num(w.area)} mm2 thinner than ${num(s.minWall)} mm in ${w.regions.length} region(s), thinnest ${num(w.worst ?? 0)} mm (nozzle ${num(s.nozzle)})`
+        : `nothing thinner than ${num(s.minWall)} mm`,
+    ),
+    ...formatRegions(w.regions, w.regions.length, (r) => `${num(r.worst)} mm`),
+  )
+  const bodies = p.bodies
+  lines.push(
+    row(
+      bodies.status,
+      'bodies',
+      `${bodies.bodies} solid${bodies.bodies === 1 ? '' : 's'}${bodies.voids ? `, ${bodies.voids} enclosed void(s)` : ''}${bodies.floating.length ? `, ${bodies.floating.length} floating above the bed` : ''}${bodies.small.length ? `, ${bodies.small.length} smaller than ${num(s.minWall)} mm` : ''}`,
+    ),
+    ...bodies.floating.slice(0, MAX_LISTED).map((x) => `           - floating ${formatBody(x)}`),
+    ...bodies.small.slice(0, MAX_LISTED).map((x) => `           - small ${formatBody(x)}`),
+  )
+  return lines.join('\n')
+}
+
+export const formatCheck = (r: CheckResult) => {
+  const s = r.settings
+  return [
+    `${LABEL[r.status]}  ${r.project}  bed ${s.bed.map(num).join(' x ')} mm, nozzle ${num(s.nozzle)} mm, overhang > ${num(s.overhangAngle)} deg, min wall ${num(s.minWall)} mm`,
+    ...r.parts.map((p) => formatCheckPart(p, s)),
+  ].join('\n')
+}

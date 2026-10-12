@@ -73,9 +73,29 @@ Verify numbers, not just pictures: compare the printed bounding boxes with the r
 
 Be a harsh critic: does it match the brief, will it print without supports where avoidable, are walls thick enough, do mating parts have clearance, are there coincident faces or zero-thickness walls, is anything floating?
 
+### 4b. Check printability
+
+Before every checkpoint and every export:
+
+```bash
+pnpm scad check <id>
+```
+
+It analyses the rendered meshes in `preview/` (it renders first if the sources changed) against the printer and thresholds in `config.yaml` (`printer.bed`, `printer.nozzle`, `check.*`). Per part, it reports PASS, WARN or FAIL for:
+
+- **manifold:** open edges, non-manifold edges, flipped or inside-out faces (FAIL). Also edges folding back more than 170 deg, which are zero-thickness fins or flaps, usually from a face ending exactly on another face (WARN). Degenerate triangles are only counted.
+- **bed:** the bounding box against the build volume. FAIL if it does not fit, WARN if it only fits rotated 90 deg or the lowest point is not z = 0.
+- **overhangs:** faces steeper than `check.overhangAngle` from vertical, excluding faces on the bed, grouped into regions with area, centre, box and worst angle. 90 deg means a flat ceiling or bridge. Always WARN, never FAIL: decide whether to redesign (chamfers, teardrops, a different orientation) or tell the user that supports are needed.
+- **walls:** thickness measured inwards from every triangle. WARN under `minWall` (default 2 x nozzle), FAIL when the thinnest 0.1 mm2 patch of a region is under the nozzle. This is approximate: one ray per triangle, only walls with roughly opposite faces count, and gaps between parts are not measured. Confirm findings with a section snapshot through the reported centre.
+- **bodies:** solids, enclosed voids, bodies floating above the bed, and bodies smaller than `minWall` (WARN).
+
+Exit code 1 means at least one FAIL. Fix FAILs before checkpointing unless the user accepts them. Mention WARNs that matter in your reply. The full result is in `preview/check.json` (`--json` prints it). Use `--part a,b` to check a subset; that does not write `check.json`. `checkpoint`, `export` and `status` note when the check is missing, outdated or failed.
+
+In the viewer, the user can toggle an overhang heatmap (H) and a wall-thickness overlay (T). Both use the same thresholds and follow every re-render, so you can point them at a region ("turn on Walls (T): the red band on the rim is 0.3 mm").
+
 ### 5. Finish the request
 
-When the user's request is done and the render is clean, checkpoint it (scad-versions):
+When the user's request is done, the render is clean and `pnpm scad check <id>` has no unexplained FAIL, checkpoint it (scad-versions):
 
 ```bash
 pnpm scad checkpoint <id> -m "Short description of what changed"
@@ -91,6 +111,7 @@ When asked for files, follow scad-export (`pnpm scad export <id>`).
 
 - View cube (top right) snaps to faces, edges and corners; keys 0 iso, 1 front, 2 top, 3 right, 4 back, 5 bottom, 6 left, F fit, O ortho/perspective.
 - Section (S) with X/Y/Z or free plane and hatched caps; X-ray (X); edges (E); wireframe (W); bounding box dimensions (D); measuring (M, click two points, snaps to vertices).
+- Overhang heatmap (H): faces past `check.overhangAngle` shade from amber to red, faces on the bed are teal. Wall overlay (T): red under the nozzle, amber up to `minWall`, fading to grey at twice that. A legend shows the totals.
 - Parameter panel lists customizer parameters; the user can tweak values (rendered separately, your files stay untouched) and click "Send to agent", which writes a proposal for you.
 - Note tool (N) pins numbered notes on faces, edges and corners; the Notes panel sends them with a snapshot of the view as annotations for you. If a request is about a specific spot that is hard to describe in words, suggest the user pins a note there.
 - Version timeline at the bottom shows checkpoints; the ghost button overlays another version for comparison.

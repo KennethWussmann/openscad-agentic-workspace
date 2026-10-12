@@ -1,6 +1,7 @@
 import type { Diagnostic, ProjectState } from '@scad/core/protocol'
 import { AlertOctagon, X } from 'lucide-react'
 import { useStore } from '../store.ts'
+import { HEAT } from '../viewer/analysis.ts'
 import { fmt } from '../viewer/Helpers.tsx'
 
 const where = (d: Diagnostic) => (d.file ? `${d.file}${d.line ? `:${d.line}` : ''}` : '')
@@ -106,6 +107,51 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
   )
 }
 
+const css = (c: { getStyle: () => string }) => c.getStyle()
+
+export const AnalysisLegend = ({ project }: { project: ProjectState }) => {
+  const analysis = useStore((s) => s.analysis)
+  if (!analysis) return null
+  const s = project.checkSettings
+  const overhang = analysis.mode === 'overhangs'
+  const stops = overhang
+    ? [`${css(HEAT.amber)} 0%`, `${css(HEAT.red)} 100%`]
+    : [`${css(HEAT.red)} 0%`, `${css(HEAT.amber)} 50%`, `${css(HEAT.neutral)} 100%`]
+  const ticks = overhang
+    ? [`${s.overhangAngle}\u00b0`, '90\u00b0']
+    : [`${fmt(s.nozzle)}`, `${fmt(s.minWall)}`, `${fmt(2 * s.minWall)} mm`]
+  const stat = analysis.busy
+    ? 'measuring...'
+    : analysis.extreme === null
+      ? overhang
+        ? `nothing past ${s.overhangAngle}\u00b0`
+        : `nothing under ${fmt(s.minWall)} mm`
+      : overhang
+        ? `${fmt(analysis.area)} mm\u00b2, up to ${fmt(analysis.extreme)}\u00b0`
+        : `${fmt(analysis.area)} mm\u00b2 under ${fmt(s.minWall)}, min ${fmt(analysis.extreme)} mm`
+  return (
+    <div className={`legend ${overhang ? 'is-overhang' : 'is-walls'}`}>
+      <header>
+        <span className="tb-label">{overhang ? 'Overhang from vertical' : 'Wall thickness'}</span>
+        <span className="mono">{overhang ? 'H' : 'T'}</span>
+      </header>
+      <div className="legend-bar" style={{ background: `linear-gradient(90deg, ${stops.join(', ')})` }} />
+      <div className="legend-ticks mono">
+        {ticks.map((t) => (
+          <span key={t}>{t}</span>
+        ))}
+      </div>
+      {overhang && (
+        <div className="legend-key mono">
+          <i style={{ background: css(HEAT.bed) }} /> on the bed, ignored
+        </div>
+      )}
+      <div className={`legend-stat mono${analysis.extreme === null || analysis.busy ? '' : ' amber'}`}>{stat}</div>
+      <div className="legend-hint mono">pnpm scad check {project.id}</div>
+    </div>
+  )
+}
+
 const SHORTCUTS: [string, string][] = [
   ['0', 'Isometric'],
   ['1 / 4', 'Front / back'],
@@ -118,6 +164,8 @@ const SHORTCUTS: [string, string][] = [
   ['W', 'Wireframe'],
   ['G', 'Build plate'],
   ['D', 'Bounding box'],
+  ['H', 'Overhang heatmap'],
+  ['T', 'Wall thickness'],
   ['S', 'Section'],
   ['M', 'Measure (click two points)'],
   ['N', 'Note (pin a note for the agent)'],

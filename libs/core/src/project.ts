@@ -1,7 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { parseDocument, stringify } from 'yaml'
-import { loadProjectConfig } from './config.ts'
+import { checkSettings, loadProjectConfig } from './config.ts'
 import { type Paths, projectLayout } from './paths.ts'
 import { hasProposals, readProposals } from './proposals.ts'
 import { isProjectId, type ProjectState, type ProjectSummary } from './protocol.ts'
@@ -166,6 +166,7 @@ export const projectState = (paths: Paths, id: string, rendering = false): Proje
     name: config.meta.name,
     description: config.meta.description,
     parts: config.meta.parts,
+    checkSettings: checkSettings(config.settings),
     render: readRender(paths, id, 'preview'),
     tweak: readRender(paths, id, 'tweak'),
     rendering,

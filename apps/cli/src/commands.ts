@@ -3,7 +3,11 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import {
   addLibrary,
+  addMissingConfigSections,
+  checkProject,
   checkpoint,
+  checkSettings,
+  checkState,
   clearProposals,
   createLocalLibrary,
   createProject,
@@ -12,6 +16,7 @@ import {
   ensureRootConfig,
   exportProject,
   isDirty,
+  isRenderCurrent,
   libraryStatus,
   listLocalLibraries,
   listProjects,
@@ -42,7 +47,7 @@ import {
   type ViewName,
   vendorRoot,
 } from '@scad/core'
-import { formatAnnotations, formatBBox, formatDiagnostic, formatRender, table } from './format.ts'
+import { formatAnnotations, formatBBox, formatCheck, formatDiagnostic, formatRender, table } from './format.ts'
 import { api, ensureServer, findServer, openBrowser, stopServer, viewerUrl } from './server.ts'
 
 export type Flags = {
@@ -134,12 +139,19 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     fix: 'Install git; it is needed to fetch third-party OpenSCAD libraries.',
   })
   const created = ensureRootConfig(paths)
+  const added = created ? [] : addMissingConfigSections(paths)
   checks.push({
     name: 'config',
     ok: true,
-    detail: `${rel(paths, paths.config)}${created ? ' (created from config.example.yaml)' : ''}`,
+    detail: `${rel(paths, paths.config)}${created ? ' (created from config.example.yaml)' : added.length ? ` (added ${added.join(', ')} from config.example.yaml)` : ''}`,
   })
   const settings = loadSettings(paths)
+  const printer = checkSettings(settings)
+  checks.push({
+    name: 'printer',
+    ok: true,
+    detail: `bed ${printer.bed.join(' x ')} mm, nozzle ${printer.nozzle} mm, overhang > ${printer.overhangAngle} deg, min wall ${printer.minWall} mm`,
+  })
   let openscad: { command: string[]; version: string; source: string } | null = null
   try {
     openscad = await resolveOpenscad(paths)
@@ -173,7 +185,14 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
   })
   checks.push({ name: 'server', ok: true, detail: server ? viewerUrl(server.port) : 'not running (`pnpm scad serve`)' })
   const ok = checks.every((c) => c.ok)
-  const data = { ok, checks, workspace: paths.workspace, openscad, server: server ? viewerUrl(server.port) : null }
+  const data = {
+    ok,
+    checks,
+    workspace: paths.workspace,
+    openscad,
+    printer,
+    server: server ? viewerUrl(server.port) : null,
+  }
   const text = [
     ...checks.map(
       (c) =>
@@ -329,6 +348,40 @@ export const params = async ({ paths, args }: Ctx): Promise<Outcome> => {
   return { data: result.params, text: result.params.length ? table(rows) : 'No customizer parameters found.' }
 }
 
+const checkHint = (paths: Paths, project: string) => {
+  const { status } = checkState(paths, project)
+  const message =
+    status === 'missing'
+      ? `not checked yet, run \`pnpm scad check ${project}\``
+      : status === 'stale'
+        ? `the last check is older than the render, run \`pnpm scad check ${project}\``
+        : status === 'fail'
+          ? `the last check failed, see \`pnpm scad check ${project}\``
+          : null
+  return { status, message }
+}
+
+export const check = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
+  const project = need(args[0], 'project id')
+  requireProject(paths, project)
+  let rendered = null
+  if (!isRenderCurrent(paths, readRender(paths, project))) {
+    const { result } = await renderViaServerOrLocal(paths, project)
+    if (result.status !== 'ok')
+      return {
+        data: { render: result, check: null },
+        text: `${formatRender(result)}\n  Not checked because the render failed.`,
+        exitCode: 1,
+      }
+    rendered = result.finishedAt
+  }
+  const result = checkProject(paths, project, partsFlag(flags))
+  const lines = [formatCheck(result)]
+  if (rendered) lines.unshift(`Rendered ${project} first because the sources changed.`)
+  if (!flags.part) lines.push(`  report: ${rel(paths, path.join(projectLayout(paths, project).preview, 'check.json'))}`)
+  return { data: result, text: lines.join('\n'), exitCode: result.status === 'fail' ? 1 : 0 }
+}
+
 export const exportCmd = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
   requireProject(paths, project)
@@ -346,7 +399,9 @@ export const exportCmd = async ({ paths, flags, args }: Ctx): Promise<Outcome> =
   }
   if (result.version === 'wip')
     lines.push('  note: the export does not match a checkpoint; checkpoint first to tie files to a version')
-  return { data: result, text: lines.join('\n'), exitCode: failed.length ? 1 : 0 }
+  const hint = checkHint(paths, project)
+  if (hint.message) lines.push(`  note: ${hint.message}`)
+  return { data: { ...result, check: hint }, text: lines.join('\n'), exitCode: failed.length ? 1 : 0 }
 }
 
 export const checkpointCmd = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
@@ -354,9 +409,10 @@ export const checkpointCmd = async ({ paths, flags, args }: Ctx): Promise<Outcom
   requireProject(paths, project)
   const message = need(flags.message, '--message (-m)')
   const version = checkpoint({ paths, project, message, force: flags.force })
+  const hint = checkHint(paths, project)
   return {
-    data: version,
-    text: `Checkpointed ${project} ${version.id}: ${message}\n  ${version.parts.map((p) => `${p.id} ${formatBBox(p.bbox)}`).join('\n  ')}`,
+    data: { ...version, check: hint },
+    text: `Checkpointed ${project} ${version.id}: ${message}\n  ${version.parts.map((p) => `${p.id} ${formatBBox(p.bbox)}`).join('\n  ')}${hint.message ? `\n  note: ${hint.message}` : ''}`,
   }
 }
 
@@ -574,6 +630,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
   const list = listVersions(paths, project)
   const proposals = readProposals(paths, project)
   const server = await serverFor(paths)
+  const printCheck = checkState(paths, project)
   const data = {
     project,
     name: config.meta.name,
@@ -582,12 +639,14 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     latestVersion: list.at(-1)?.id ?? null,
     changedSinceVersion: isDirty(paths, project),
     proposals,
+    check: printCheck,
     viewer: server ? viewerUrl(server.port, project) : null,
   }
   const lines = [
     `${config.meta.name} (${project})  dir ${rel(paths, layout.dir)}`,
     result ? formatRender(result) : '  not rendered yet',
     `  versions: ${list.length}${list.length ? `, latest ${list.at(-1)?.id}` : ''}${data.changedSinceVersion ? ', working copy changed' : ''}`,
+    `  check: ${printCheck.status === 'missing' ? 'not run yet' : printCheck.status === 'stale' ? `outdated (was ${printCheck.result?.status})` : printCheck.status}${printCheck.status === 'pass' ? '' : ` (\`pnpm scad check ${project}\`)`}`,
   ]
   if (proposals.params)
     lines.push(

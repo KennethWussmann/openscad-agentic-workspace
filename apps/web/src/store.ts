@@ -13,6 +13,17 @@ export type Display = {
   dims: boolean
   ortho: boolean
   modelColors: boolean
+  overhangs: boolean
+  walls: boolean
+}
+
+export type AnalysisMode = 'overhangs' | 'walls'
+
+export type AnalysisSummary = {
+  mode: AnalysisMode
+  busy: boolean
+  area: number
+  extreme: number | null
 }
 
 export type SectionState = {
@@ -52,6 +63,7 @@ export type Store = {
   console: boolean
   sidebar: boolean
   embed: boolean
+  analysis: AnalysisSummary | null
   setProjects: (p: ProjectSummary[]) => void
   setProject: (p: ProjectState | null, error?: string | null) => void
   selectProject: (id: string | null) => void
@@ -80,6 +92,7 @@ export type Store = {
   toggleConsole: () => void
   toggleSidebar: () => void
   toggleEmbed: () => void
+  setAnalysis: (a: AnalysisSummary | null) => void
 }
 
 const DISPLAY_KEY = 'scad-display'
@@ -103,6 +116,8 @@ const loadDisplay = (): Display => {
     dims: true,
     ortho: false,
     modelColors: true,
+    overhangs: false,
+    walls: false,
   }
   try {
     return { ...base, ...(JSON.parse(localStorage.getItem(DISPLAY_KEY) ?? '{}') as Partial<Display>) }
@@ -138,6 +153,7 @@ export const useStore = create<Store>((set, get) => ({
   console: false,
   sidebar: localStorage.getItem(SIDEBAR_KEY) !== 'closed',
   embed: params.has('embed') && params.get('embed') !== '0',
+  analysis: null,
   setProjects: (projects) => set({ projects }),
   setProject: (project, error = null) => {
     const prev = get().project
@@ -181,6 +197,8 @@ export const useStore = create<Store>((set, get) => ({
   toggleDisplay: (key) =>
     set((s) => {
       const display = { ...s.display, [key]: !s.display[key] }
+      if (key === 'overhangs' && display.overhangs) display.walls = false
+      if (key === 'walls' && display.walls) display.overhangs = false
       localStorage.setItem(DISPLAY_KEY, JSON.stringify(display))
       return { display }
     }),
@@ -232,4 +250,7 @@ export const useStore = create<Store>((set, get) => ({
       setParam('embed', s.embed ? null : '1')
       return { embed: !s.embed }
     }),
+  setAnalysis: (analysis) => {
+    if (JSON.stringify(get().analysis) !== JSON.stringify(analysis)) set({ analysis })
+  },
 }))

@@ -3,6 +3,7 @@ import { parseArgs } from 'node:util'
 import { resolvePaths } from '@scad/core'
 import {
   type Ctx,
+  check,
   checkpointCmd,
   doctor,
   exportCmd,
@@ -43,6 +44,8 @@ Projects
            [--part a,b] [--size 900] [--out name.png]
                                           Extra PNG view or cross-section into preview/
   params <project>                        Customizer parameters with values, ranges and options
+  check <project> [--part a,b]            Printability: manifold, bed fit, overhangs, thin walls, floating bodies.
+                                          Renders first when sources changed, writes preview/check.json, exit 1 on FAIL
   export <project> [--formats 3mf,stl,...] [--part a,b]
                                           Write configured formats to out/
 
@@ -73,6 +76,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => Promise<Outcome>> = {
   render,
   snapshot,
   params,
+  check,
   export: exportCmd,
   checkpoint: checkpointCmd,
   versions,

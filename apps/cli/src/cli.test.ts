@@ -40,6 +40,12 @@ it('fails with usage for unknown commands and flags', () => {
   expect(scad('list', '--bogus').code).toBe(1)
 })
 
+it('requires a project for check', () => {
+  const r = scad('check')
+  expect(r.code).toBe(2)
+  expect(r.stderr).toContain('Missing project id')
+})
+
 it('creates and lists projects', () => {
   const created = json<{ project: string }>('new', 'clip', '--name', 'Cable Clip')
   expect(created.code).toBe(0)
@@ -127,16 +133,45 @@ it('shows pending annotations with geometry and snapshot path, then clears them'
 })
 
 describe.skipIf(!hasOpenscad)('with OpenSCAD', () => {
-  it('renders, checkpoints, lists versions and exports', () => {
+  it('renders, checks, checkpoints, lists versions and exports', () => {
     const render = json<{ status: string; sheet: string | null }>('render', 'clip')
     expect(render.code).toBe(0)
     expect(render.data.status).toBe('ok')
     expect(render.data.sheet).toMatch(/preview\/sheet\.png$/)
-    expect(json<{ id: string }>('checkpoint', 'clip', '-m', 'Initial').data.id).toBe('v001')
+    expect(scad('status', 'clip').stdout).toContain('check: not run yet')
+    const check = json<{ status: string; parts: { id: string; manifold: { status: string } }[] }>('check', 'clip')
+    expect(check.code).toBe(0)
+    expect(check.data.status).toBe('pass')
+    expect(check.data.parts.map((p) => [p.id, p.manifold.status])).toEqual([['main', 'pass']])
+    expect(existsSync(path.join(workspace, 'clip', 'preview', 'check.json'))).toBe(true)
+    const text = scad('check', 'clip').stdout
+    expect(text).toContain('PASS  clip  bed 256 x 256 x 256 mm, nozzle 0.4 mm')
+    expect(text).toMatch(/PASS {2}manifold {3}watertight/)
+    expect(scad('status', 'clip').stdout).toContain('check: pass')
+    const version = json<{ id: string; check: { status: string; message: string | null } }>(
+      'checkpoint',
+      'clip',
+      '-m',
+      'Initial',
+    )
+    expect(version.data.id).toBe('v001')
+    expect(version.data.check).toEqual({ status: 'pass', message: null })
     expect(json<{ versions: { id: string }[] }>('versions', 'clip').data.versions.map((v) => v.id)).toEqual(['v001'])
     const exported = json<{ files: { ok: boolean }[] }>('export', 'clip', '--formats', '3mf')
     expect(exported.data.files.every((f) => f.ok)).toBe(true)
     const snap = json<{ ok: boolean }>('snapshot', 'clip', '--section', 'x=10')
     expect(snap.data.ok).toBe(true)
+  })
+
+  it('fails the check for thin walls and hints at it on checkpoint and export', () => {
+    writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), 'cube([30, 30, 0.3]);\n')
+    const check = scad('check', 'clip')
+    expect(check.code).toBe(1)
+    expect(check.stdout).toContain('Rendered clip first because the sources changed.')
+    expect(check.stdout).toMatch(/FAIL {2}walls {6}1800 mm2 thinner than 0.8 mm in 2 region\(s\), thinnest 0.3 mm/)
+    expect(scad('checkpoint', 'clip', '-m', 'Thin').stdout).toContain('note: the last check failed')
+    writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), 'cube([30, 30, 2]);\n')
+    expect(json<{ status: string }>('render', 'clip', '--no-sheet').data.status).toBe('ok')
+    expect(scad('export', 'clip', '--formats', 'stl').stdout).toContain('the last check is older than the render')
   })
 })

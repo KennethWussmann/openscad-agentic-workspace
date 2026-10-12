@@ -9,12 +9,15 @@ Each project keeps a linear history in `workspace/<id>/versions/vNNN/`: a copy o
 
 ## When to checkpoint
 
-One checkpoint per completed user request, after a clean render:
+One checkpoint per completed user request, after a clean render and a printability check:
 
 ```bash
 pnpm scad render <id>
+pnpm scad check <id>
 pnpm scad checkpoint <id> -m "Wider base, two M3 mounting holes"
 ```
+
+- Fix FAILs from `check` first, or explain them to the user if they are intended. `checkpoint` adds a note when the check is missing, older than the render or failed.
 
 - The message says what changed for the user, not how ("Lid snaps on tighter", "Holes for 6 mm cable"). It shows up in the timeline.
 - `checkpoint` refuses when the last render failed, when files changed after the last render (render again) or when nothing changed since the latest version (`--force` overrides, rarely needed).
@@ -82,5 +85,5 @@ Handle annotations like this:
 
 ### Finishing either kind
 
-1. `pnpm scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), `pnpm scad checkpoint <id> -m "..."`.
+1. `pnpm scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), `pnpm scad check <id>`, `pnpm scad checkpoint <id> -m "..."`.
 2. `pnpm scad proposal <id> --clear` clears both kinds. In your reply, go through annotations by number ("1: hole now 3.7 mm, 2: front edge rounded r1").

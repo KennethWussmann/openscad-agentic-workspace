@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { Document, parseDocument, parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import type { Paths } from './paths.ts'
-import type { DefineValue } from './protocol.ts'
+import type { CheckSettings, DefineValue } from './protocol.ts'
 
 export const EXPORT_FORMATS = [
   '3mf',
@@ -71,9 +71,30 @@ export const SettingsSchema = z.strictObject({
       open: z.boolean().default(true),
     })
     .prefault({}),
+  printer: z
+    .strictObject({
+      bed: z.tuple([z.number().positive(), z.number().positive(), z.number().positive()]).default([256, 256, 256]),
+      nozzle: z.number().positive().default(0.4),
+    })
+    .prefault({}),
+  check: z
+    .strictObject({
+      overhangAngle: z.number().min(0).max(90).default(45),
+      minWall: z.number().positive().nullable().default(null),
+      minRegionArea: z.number().min(0).default(1),
+    })
+    .prefault({}),
 })
 
 export type Settings = z.infer<typeof SettingsSchema>
+
+export const checkSettings = (settings: Settings): CheckSettings => ({
+  bed: settings.printer.bed,
+  nozzle: settings.printer.nozzle,
+  overhangAngle: settings.check.overhangAngle,
+  minWall: settings.check.minWall ?? 2 * settings.printer.nozzle,
+  minRegionArea: settings.check.minRegionArea,
+})
 
 const PartSchema = z.strictObject({
   id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'part ids are lowercase-dashed'),
@@ -127,6 +148,36 @@ export const ensureRootConfig = (paths: Paths) => {
   if (existsSync(paths.configExample)) copyFileSync(paths.configExample, paths.config)
   else writeFileSync(paths.config, '')
   return true
+}
+
+const TOP_KEY = /^([A-Za-z_][A-Za-z0-9_]*):/
+
+const exampleBlocks = (text: string) => {
+  const lines = text.split(/\r?\n/)
+  const starts: { key: string; line: number }[] = []
+  lines.forEach((line, i) => {
+    const m = line.match(TOP_KEY)
+    if (!m) return
+    let start = i
+    while (start > 0 && lines[start - 1].startsWith('#')) start--
+    starts.push({ key: m[1], line: start })
+  })
+  return starts.map((s, i) => {
+    const body = lines.slice(s.line, starts[i + 1]?.line ?? lines.length)
+    while (body.length && !body[body.length - 1].trim()) body.pop()
+    return { key: s.key, text: body.join('\n') }
+  })
+}
+
+export const addMissingConfigSections = (paths: Paths): string[] => {
+  if (!existsSync(paths.config) || !existsSync(paths.configExample)) return []
+  const present = new Set(Object.keys(readYaml(paths.config)))
+  const missing = exampleBlocks(readFileSync(paths.configExample, 'utf8')).filter((b) => !present.has(b.key))
+  if (!missing.length) return []
+  const current = readFileSync(paths.config, 'utf8')
+  const sep = current === '' || current.endsWith('\n') ? '' : '\n'
+  writeFileSync(paths.config, `${current}${sep}${missing.map((b) => `\n${b.text}\n`).join('')}`)
+  return missing.map((b) => b.key)
 }
 
 const rootRaw = (paths: Paths) => readYaml(paths.config)

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
+import { checkProject, checkState, readCheck } from '../checker.ts'
 import { loadProjectConfig } from '../config.ts'
 import { discoverOpenscad, type Openscad } from '../discovery.ts'
 import { exportProject } from '../exporter.ts'
@@ -77,6 +78,24 @@ describe.skipIf(!found.openscad)('with OpenSCAD', () => {
     } finally {
       writeFileSync(main, good)
     }
+  })
+
+  it('checks the rendered 3MF models and tracks whether the check is current', async () => {
+    await renderProject({ paths, project: 'kit', openscad })
+    expect(checkState(paths, 'kit').status).toBe('missing')
+    const result = checkProject(paths, 'kit')
+    expect(result.parts.map((p) => [p.id, p.triangles, p.bbox?.size, p.manifold.status, p.bed.status])).toEqual([
+      ['base', 12, [20, 20, 2], 'pass', 'pass'],
+      ['lid', 12, [10, 10, 2], 'pass', 'warn'],
+    ])
+    expect(result.parts[1].bed.minZ).toBe(5)
+    expect(result.status).toBe('warn')
+    expect(readCheck(paths, 'kit')?.render).toBe(readRender(paths, 'kit')?.finishedAt)
+    expect(checkState(paths, 'kit').status).toBe('warn')
+    expect(checkProject(paths, 'kit', ['lid']).parts.map((p) => p.id)).toEqual(['lid'])
+    expect(() => checkProject(paths, 'kit', ['nope'])).toThrow(/Unknown part/)
+    await renderProject({ paths, project: 'kit', openscad })
+    expect(checkState(paths, 'kit').status).toBe('stale')
   })
 
   it('renders a contact sheet, checkpoints and exports', async () => {

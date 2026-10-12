@@ -90,7 +90,8 @@ Rules behind it:
 
 ## Printability defaults
 
-Unless the brief says otherwise, assume FDM with a 0.4 mm nozzle:
+Unless the brief says otherwise, assume FDM with a 0.4 mm nozzle. `printer` and `check` in `config.yaml` hold the bed size, nozzle and thresholds that `pnpm scad check` and the viewer overlays use. Set them per project when the user names a printer.
+
 
 - Walls >= 1.2 mm (3 perimeters), structural >= 2 mm. Floors/roofs >= 0.8 mm.
 - Clearance between mating printed parts: 0.2 mm tight press, 0.3 mm sliding, 0.4-0.5 mm loose. Holes print undersized: add 0.2-0.3 mm to hole diameters for screws and pins.

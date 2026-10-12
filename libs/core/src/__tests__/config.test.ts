@@ -2,6 +2,8 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
+  addMissingConfigSections,
+  checkSettings,
   deepMerge,
   deleteYamlValue,
   loadProjectConfig,
@@ -57,6 +59,24 @@ describe('settings', () => {
     expect(settings.export).toEqual({ formats: ['stl'], filename: '{project}' })
   })
 
+  it('derives check settings with minWall defaulting to twice the nozzle', () => {
+    const paths = tempPaths('config-check')
+    expect(checkSettings(loadSettings(paths))).toEqual({
+      bed: [256, 256, 256],
+      nozzle: 0.4,
+      overhangAngle: 45,
+      minWall: 0.8,
+      minRegionArea: 1,
+    })
+    write(paths.config, 'printer:\n  nozzle: 0.6\n  bed: [180, 180, 180]\n')
+    const projectFile = path.join(paths.workspace, 'p', 'config.yaml')
+    write(projectFile, 'name: P\ncheck:\n  overhangAngle: 50\n')
+    const derived = checkSettings(loadProjectConfig(paths, projectFile, 'p').settings)
+    expect(derived).toMatchObject({ bed: [180, 180, 180], nozzle: 0.6, minWall: 1.2, overhangAngle: 50 })
+    write(paths.config, 'check:\n  minWall: 1\n  overhangAngle: 95\n')
+    expect(() => loadSettings(paths)).toThrow(/check\.overhangAngle/)
+  })
+
   it('rejects duplicate part ids', () => {
     const paths = tempPaths('config-parts')
     const projectFile = path.join(paths.workspace, 'p', 'config.yaml')
@@ -74,6 +94,20 @@ describe('yaml editing', () => {
     expect(text).toContain('# keep me')
     expect(text).toContain('# and me')
     expect(loadSettings(paths).openscad.path).toBe('/opt/openscad')
+  })
+
+  it('appends sections from config.example.yaml that an older config.yaml lacks', () => {
+    const paths = tempPaths('config-sections')
+    writeFileSync(paths.config, '# mine\nopenscad:\n  path: /opt/openscad\nprinter:\n  nozzle: 0.6\n')
+    const added = addMissingConfigSections(paths)
+    expect(added).toEqual(['libraries', 'render', 'export', 'server', 'check'])
+    const text = readFileSync(paths.config, 'utf8')
+    expect(text.startsWith('# mine\nopenscad:\n  path: /opt/openscad\nprinter:\n  nozzle: 0.6\n\n')).toBe(true)
+    expect(text).toContain('# Thresholds for `pnpm scad check` and the viewer overlays.\ncheck:\n')
+    const settings = loadSettings(paths)
+    expect(settings.openscad.path).toBe('/opt/openscad')
+    expect(settings.printer.nozzle).toBe(0.6)
+    expect(addMissingConfigSections(paths)).toEqual([])
   })
 
   it('sets and deletes nested values in an empty file', () => {

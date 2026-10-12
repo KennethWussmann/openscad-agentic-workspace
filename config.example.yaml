@@ -43,3 +43,19 @@ server:
   port: 5180
   # Open the default browser when the agent shows a model and no viewer tab is connected.
   open: true
+
+# Printer used by `pnpm scad check` and the viewer overlays.
+printer:
+  # Build volume [x, y, z] in mm. Parts larger than this fail the bed check.
+  bed: [256, 256, 256]
+  # Nozzle diameter in mm. Walls thinner than this fail the wall check.
+  nozzle: 0.4
+
+# Thresholds for `pnpm scad check` and the viewer overlays.
+check:
+  # Faces tilted further than this many degrees from vertical count as overhangs. Faces on the bed are ignored.
+  overhangAngle: 45
+  # Walls thinner than this (mm) are reported. null means 2 x printer.nozzle.
+  minWall: null
+  # Overhang and thin-wall regions smaller than this (mm2) are not reported.
+  minRegionArea: 1

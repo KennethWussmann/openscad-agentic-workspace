@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { Box3, type DirectionalLight, DoubleSide, type Group, Vector3 } from 'three'
 import { fileUrl } from '../api.ts'
 import { useStore } from '../store.ts'
+import { useAnalysis } from './analysis.ts'
 import { CaptureBridge } from './capture.tsx'
 import { BuildPlate, Dimensions, Measurements } from './Helpers.tsx'
 import { ModelView } from './ModelView.tsx'
@@ -162,6 +163,13 @@ export const Viewport = ({ project }: ViewportProps) => {
     setBounds(box.isEmpty() ? null : [box.min.toArray(), box.max.toArray()])
   }, [box, setBounds])
 
+  const settingsKey = JSON.stringify(project.checkSettings)
+  const checkSettings = useMemo(() => JSON.parse(settingsKey) as ProjectState['checkSettings'], [settingsKey])
+  const mode = display.overhangs ? 'overhangs' : display.walls ? 'walls' : null
+  const analysis = useAnalysis(models, visible, checkSettings, mode)
+  const setAnalysis = useStore((s) => s.setAnalysis)
+  useEffect(() => setAnalysis(analysis?.summary ?? null), [analysis, setAnalysis])
+
   const fitted = useRef(0)
   const loaded = Object.keys(models).length > 0
   useEffect(() => {
@@ -221,7 +229,15 @@ export const Viewport = ({ project }: ViewportProps) => {
       <CameraRig />
       <CaptureBridge />
       {display.grid && <BuildPlate extent={extent} />}
-      <ModelView models={models} ghosts={ghosts} order={order} visible={visible} extent={extent} onPick={onPick} />
+      <ModelView
+        models={models}
+        ghosts={ghosts}
+        order={order}
+        visible={visible}
+        extent={extent}
+        heat={analysis?.heat}
+        onPick={onPick}
+      />
       {display.dims && <Dimensions box={box} />}
       {section.enabled && section.axis !== 'free' && <SectionOutline extent={extent} />}
       {section.enabled && section.axis === 'free' && <FreeGizmo extent={extent} />}
