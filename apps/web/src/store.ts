@@ -1,0 +1,176 @@
+import type { DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/core/protocol'
+import { create } from 'zustand'
+
+export type Axis = 'x' | 'y' | 'z' | 'free'
+
+export type Measurement = { id: number; a: Vec3; b: Vec3 }
+
+export type Display = {
+  xray: boolean
+  edges: boolean
+  wireframe: boolean
+  grid: boolean
+  dims: boolean
+  ortho: boolean
+  modelColors: boolean
+}
+
+export type SectionState = {
+  enabled: boolean
+  axis: Axis
+  offset: number
+  flip: boolean
+  caps: boolean
+  gizmo: 'translate' | 'rotate'
+}
+
+export type Tool = 'orbit' | 'measure'
+
+export type Store = {
+  projects: ProjectSummary[]
+  projectId: string | null
+  project: ProjectState | null
+  error: string | null
+  rendering: { preview: boolean; tweak: boolean }
+  versionId: string | null
+  ghostId: string | null
+  hidden: string[]
+  solo: string | null
+  display: Display
+  section: SectionState
+  tool: Tool
+  measures: Measurement[]
+  pending: Vec3 | null
+  edits: Record<string, DefineValue>
+  fitToken: number
+  bounds: [Vec3, Vec3] | null
+  help: boolean
+  console: boolean
+  setProjects: (p: ProjectSummary[]) => void
+  setProject: (p: ProjectState | null, error?: string | null) => void
+  selectProject: (id: string | null) => void
+  setRendering: (kind: 'preview' | 'tweak', value: boolean) => void
+  setVersion: (id: string | null) => void
+  setGhost: (id: string | null) => void
+  togglePart: (id: string) => void
+  setSolo: (id: string | null) => void
+  toggleDisplay: (key: keyof Display) => void
+  setSection: (patch: Partial<SectionState>) => void
+  setTool: (tool: Tool) => void
+  addPoint: (p: Vec3) => void
+  clearMeasures: () => void
+  cancelPending: () => void
+  setEdit: (name: string, value: DefineValue | undefined) => void
+  resetEdits: () => void
+  requestFit: () => void
+  setBounds: (b: [Vec3, Vec3] | null) => void
+  toggleHelp: () => void
+  toggleConsole: () => void
+}
+
+const DISPLAY_KEY = 'scad-display'
+
+const loadDisplay = (): Display => {
+  const base: Display = {
+    xray: false,
+    edges: true,
+    wireframe: false,
+    grid: true,
+    dims: true,
+    ortho: false,
+    modelColors: true,
+  }
+  try {
+    return { ...base, ...(JSON.parse(localStorage.getItem(DISPLAY_KEY) ?? '{}') as Partial<Display>) }
+  } catch {
+    return base
+  }
+}
+
+let measureId = 0
+
+export const useStore = create<Store>((set, get) => ({
+  projects: [],
+  projectId: new URLSearchParams(location.search).get('project'),
+  project: null,
+  error: null,
+  rendering: { preview: false, tweak: false },
+  versionId: null,
+  ghostId: null,
+  hidden: [],
+  solo: null,
+  display: loadDisplay(),
+  section: { enabled: false, axis: 'x', offset: 0, flip: false, caps: true, gizmo: 'translate' },
+  tool: 'orbit',
+  measures: [],
+  pending: null,
+  edits: {},
+  fitToken: 0,
+  bounds: null,
+  help: false,
+  console: false,
+  setProjects: (projects) => set({ projects }),
+  setProject: (project, error = null) => {
+    const prev = get().project
+    const sameProject = prev?.id === project?.id
+    set({
+      project,
+      error,
+      rendering: { preview: Boolean(project?.rendering), tweak: false },
+      ...(sameProject
+        ? {}
+        : { versionId: null, ghostId: null, hidden: [], solo: null, measures: [], pending: null, edits: {} }),
+    })
+    if (!sameProject) get().requestFit()
+    if (sameProject && project) {
+      const versions = new Set(project.versions.map((v) => v.id))
+      const { versionId, ghostId } = get()
+      if (versionId && !versions.has(versionId)) set({ versionId: null })
+      if (ghostId && !versions.has(ghostId)) set({ ghostId: null })
+    }
+  },
+  selectProject: (projectId) => {
+    const url = new URL(location.href)
+    if (projectId) url.searchParams.set('project', projectId)
+    else url.searchParams.delete('project')
+    history.replaceState(null, '', url)
+    set({ projectId })
+  },
+  setRendering: (kind, value) => set((s) => ({ rendering: { ...s.rendering, [kind]: value } })),
+  setVersion: (versionId) => set((s) => ({ versionId, ghostId: s.ghostId === versionId ? null : s.ghostId })),
+  setGhost: (ghostId) => set({ ghostId }),
+  togglePart: (id) =>
+    set((s) => ({ hidden: s.hidden.includes(id) ? s.hidden.filter((h) => h !== id) : [...s.hidden, id] })),
+  setSolo: (solo) => set({ solo }),
+  toggleDisplay: (key) =>
+    set((s) => {
+      const display = { ...s.display, [key]: !s.display[key] }
+      localStorage.setItem(DISPLAY_KEY, JSON.stringify(display))
+      return { display }
+    }),
+  setSection: (patch) => set((s) => ({ section: { ...s.section, ...patch } })),
+  setTool: (tool) => set({ tool, pending: null }),
+  addPoint: (p) =>
+    set((s) =>
+      s.pending
+        ? { pending: null, measures: [...s.measures, { id: ++measureId, a: s.pending, b: p }] }
+        : { pending: p },
+    ),
+  clearMeasures: () => set({ measures: [], pending: null }),
+  cancelPending: () => set({ pending: null }),
+  setEdit: (name, value) =>
+    set((s) => {
+      const edits = { ...s.edits }
+      if (value === undefined) delete edits[name]
+      else edits[name] = value
+      return { edits }
+    }),
+  resetEdits: () => set({ edits: {} }),
+  requestFit: () => set((s) => ({ fitToken: s.fitToken + 1 })),
+  setBounds: (bounds) => {
+    const prev = get().bounds
+    if (JSON.stringify(prev) !== JSON.stringify(bounds)) set({ bounds })
+  },
+  toggleHelp: () => set((s) => ({ help: !s.help })),
+  toggleConsole: () => set((s) => ({ console: !s.console })),
+}))

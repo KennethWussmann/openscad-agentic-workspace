@@ -1,0 +1,25 @@
+{
+  "name": "@scad/core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.6"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pngjs": "^6.0.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}

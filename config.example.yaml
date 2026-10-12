@@ -1,0 +1,45 @@
+# Workspace settings. `pnpm scad doctor` copies this file to config.yaml (gitignored) on first run.
+# Every project can override any of these keys in workspace/<project>/config.yaml.
+# Objects are merged key by key, lists and plain values replace the inherited value.
+
+# Third-party OpenSCAD libraries, cloned into workspace/_vendor/<name>@<ref>/<name> and put on OPENSCADPATH.
+# The key is the folder name used in include/use, e.g. include <BOSL2/std.scad>.
+# Pin ref to a tag or commit; `pnpm scad lib add` pins to the current commit when no ref is given.
+# Projects inherit these and can add their own or re-pin a ref in their config.yaml.
+libraries: {}
+#  BOSL2:
+#    git: https://github.com/BelfrySCAD/BOSL2.git
+#    ref: <tag or commit>
+
+openscad:
+  # Path to the OpenSCAD executable, or a command as a list (e.g. [flatpak, run, org.openscad.OpenSCAD]).
+  # Leave null to auto-discover; the first successful discovery is written back here.
+  path: null
+  # Geometry backend: manifold (fast, default) or cgal.
+  backend: manifold
+  # Kill a single OpenSCAD run after this many seconds.
+  timeoutSeconds: 600
+  # Experimental features passed as --enable, e.g. [lazy-union, roof].
+  enable: []
+
+render:
+  # Values passed as -D to every part, e.g. { $fs: 0.4, $fa: 2 }.
+  defines: {}
+  # Render preview/sheet.png (iso, front, right, top) after every CLI render.
+  sheet: true
+  # Edge length of the square contact sheet in pixels.
+  sheetSize: 1200
+  # OpenSCAD colorscheme used for sheet and snapshot images.
+  colorscheme: Tomorrow Night
+
+export:
+  # Formats written by `pnpm scad export`: 3mf, stl, asciistl, obj, off, wrl, png, svg, dxf, pdf, csg.
+  formats: [3mf, stl]
+  # File name template without extension. Placeholders: {project}, {part}, {version}.
+  filename: "{project}-{part}"
+
+server:
+  # Preferred dev server port; the next free port is used if it is taken.
+  port: 5180
+  # Open the default browser when the agent shows a model and no viewer tab is connected.
+  open: true

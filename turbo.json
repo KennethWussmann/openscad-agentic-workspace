@@ -1,0 +1,18 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "agentGuidance": false,
+  "tasks": {
+    "typecheck": {},
+    "test": {
+      "env": ["OPENSCAD_PATH"]
+    },
+    "build": {
+      "dependsOn": ["typecheck"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

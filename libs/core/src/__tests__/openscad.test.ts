@@ -1,0 +1,106 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { loadProjectConfig } from '../config.ts'
+import { discoverOpenscad, type Openscad } from '../discovery.ts'
+import { exportProject } from '../exporter.ts'
+import { projectLayout } from '../paths.ts'
+import { createProject } from '../project.ts'
+import { readRender, renderProject } from '../render.ts'
+import { checkpoint } from '../versions.ts'
+import { renderSheet } from '../views.ts'
+import { tempPaths, write } from './helpers.ts'
+
+const found = await discoverOpenscad({ configured: null })
+const openscad = found.openscad as Openscad
+
+describe.skipIf(!found.openscad)('with OpenSCAD', () => {
+  const paths = tempPaths('openscad')
+
+  beforeAll(() => {
+    const layout = createProject({ paths, id: 'kit' })
+    write(path.join(paths.libs, 'shapes', 'shapes.scad'), 'module plate(s) { cube([s, s, 2]); }\n')
+    writeFileSync(
+      layout.config,
+      'name: Kit\nparts:\n  - id: base\n    defines: { part: "base" }\n  - id: lid\n    defines: { part: "lid" }\n',
+    )
+    writeFileSync(
+      path.join(layout.src, 'main.scad'),
+      [
+        'use <shapes/shapes.scad>',
+        '/* [Size] */',
+        '// Plate size',
+        'size = 20; // [10:1:50]',
+        'part = "base"; // [base, lid]',
+        'echo(size = size);',
+        'if (part == "base") color("red") plate(size);',
+        'else translate([0, 0, 5]) plate(size / 2);',
+      ].join('\n'),
+    )
+  })
+
+  it('renders every part, collects params, inputs and diagnostics', async () => {
+    const result = await renderProject({ paths, project: 'kit', openscad })
+    expect(result.status).toBe('ok')
+    expect(result.parts.map((p) => [p.id, p.model, p.bbox?.size])).toEqual([
+      ['base', 'preview/base.3mf', [20, 20, 2]],
+      ['lid', 'preview/lid.3mf', [10, 10, 2]],
+    ])
+    expect(result.params.map((p) => p.name)).toEqual(['size'])
+    expect(result.inputs.map((i) => i.path)).toEqual([
+      '_libs/shapes/shapes.scad',
+      'kit/config.yaml',
+      'kit/src/main.scad',
+    ])
+    expect(result.parts[0].diagnostics).toContainEqual({ level: 'echo', message: 'size = 20' })
+  })
+
+  it('applies overrides for tweak renders without touching the preview', async () => {
+    const before = readRender(paths, 'kit')
+    const tweak = await renderProject({ paths, project: 'kit', openscad, kind: 'tweak', overrides: { size: 30 } })
+    expect(tweak.parts[0].model).toBe('temp/tweak/base.3mf')
+    expect(tweak.parts[0].bbox?.size).toEqual([30, 30, 2])
+    expect(readRender(paths, 'kit')?.finishedAt).toBe(before?.finishedAt)
+  })
+
+  it('keeps the last good model when a render fails', async () => {
+    const main = path.join(projectLayout(paths, 'kit').src, 'main.scad')
+    const good = readFileSync(main, 'utf8')
+    writeFileSync(main, `${good}\nbroken(`)
+    try {
+      const result = await renderProject({ paths, project: 'kit', openscad })
+      expect(result.status).toBe('error')
+      expect(result.parts[0]).toMatchObject({ status: 'error', stale: true, model: 'preview/base.3mf' })
+      const error = result.parts[0].diagnostics.find((d) => d.level === 'error')
+      expect(error?.file).toMatch(/main\.scad$/)
+      expect(error?.line).toBeGreaterThanOrEqual(9)
+    } finally {
+      writeFileSync(main, good)
+    }
+  })
+
+  it('renders a contact sheet, checkpoints and exports', async () => {
+    const result = await renderProject({ paths, project: 'kit', openscad })
+    const layout = projectLayout(paths, 'kit')
+    const { settings } = loadProjectConfig(paths, layout.config, 'kit')
+    const models = result.parts.map((p) => path.join(layout.dir, p.model as string))
+    const diagnostics = await renderSheet(
+      { paths, settings, openscad, cwd: layout.dir, temp: layout.temp },
+      models,
+      layout.sheet,
+    )
+    expect(diagnostics.filter((d) => d.level === 'error')).toEqual([])
+    expect(existsSync(layout.sheet)).toBe(true)
+    const v = checkpoint({ paths, project: 'kit', message: 'Kit' })
+    expect(v.sheet).toBe('versions/v001/preview/sheet.png')
+    const exported = await exportProject({ paths, project: 'kit', openscad, formats: ['3mf', 'stl'] })
+    expect(exported.version).toBe('v001')
+    expect(exported.files.map((f) => [f.file, f.ok])).toEqual([
+      ['out/kit-base.3mf', true],
+      ['out/kit-base.stl', true],
+      ['out/kit-lid.3mf', true],
+      ['out/kit-lid.stl', true],
+    ])
+    expect(readFileSync(path.join(layout.out, 'kit-base.stl')).subarray(0, 5).toString()).not.toBe('solid')
+  })
+})

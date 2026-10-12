@@ -1,0 +1,8 @@
+node_modules
+dist
+.turbo
+*.local
+/workspace
+/config.yaml
+/.scratch
+.test-tmp
