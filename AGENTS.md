@@ -15,7 +15,7 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 | `.agents/skills/scad-craft/SKILL.md` | Always when writing or changing `.scad` files |
 | `.agents/skills/scad-libs/SKILL.md` | Reusable modules across projects, third-party libraries (BOSL2 and others), threads, rounding, attachments |
 | `.agents/skills/scad-versions/SKILL.md` | Checkpoints, "go back to", comparing versions, proposals the user sent from the browser: parameter values and 3D annotations (notes pinned on faces, edges and corners, with a snapshot) |
-| `.agents/skills/scad-export/SKILL.md` | Delivering files: STL, 3MF, OBJ, PNG, SVG/DXF, print preparation |
+| `.agents/skills/scad-export/SKILL.md` | Delivering files: STL, 3MF, OBJ, PNG, SVG/DXF, print preparation, merged multi-color/multi-material 3MF |
 
 ## Repository layout
 

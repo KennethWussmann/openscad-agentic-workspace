@@ -1,6 +1,6 @@
 ---
 name: scad-export
-description: Export workspace models to files - STL, 3MF, OBJ, OFF, WRL, PNG renders, and 2D SVG/DXF/PDF - with formats configured in config.yaml, plus a pre-delivery checklist for 3D printing. Use when the user wants files, an STL or 3MF for the slicer, a picture of the model, a DXF/SVG for laser cutting, or asks whether a model is ready to print.
+description: Export workspace models to files - STL, 3MF, OBJ, OFF, WRL, PNG renders, and 2D SVG/DXF/PDF - with formats configured in config.yaml, merged multi-object 3MFs that keep multi-color or multi-material parts aligned in the slicer, plus a pre-delivery checklist for 3D printing. Use when the user wants files, an STL or 3MF for the slicer, a picture of the model, a DXF/SVG for laser cutting, or asks whether a model is ready to print, or has parts (text inlays, second-color details, soft inserts) that must stay aligned when imported into Bambu Studio, Orca or PrusaSlicer.
 ---
 
 # Exporting
@@ -33,6 +33,52 @@ Configured in `config.yaml` under `export.formats` (root default `[3mf, stl]`), 
 | `png` | Isometric image of the part at `render.sheetSize` |
 | `svg`, `dxf`, `pdf` | 2D outlines for laser/CNC cutting; the part must produce 2D geometry |
 | `csg` | OpenSCAD's flattened CSG tree, for debugging or other CSG tools |
+
+## Merged multi-object 3MF (multi-color and multi-material)
+
+Every part exports to its own file, and a 3MF from OpenSCAD normally holds one merged mesh. When the user imports several part files into a slicer, Bambu Studio, Orca and PrusaSlicer re-centre each one and lose the alignment between them. Offer a merged 3MF whenever parts only make sense together in their exact relative position:
+
+- inlays and engraved or embossed text in a second color,
+- multi-color logos, labels or decorations,
+- multi-material parts (a TPU grip or foot on a PLA body),
+- modifier volumes the user wants to place in the slicer.
+
+Do not merge parts that are printed or assembled independently (lid and box, separate brackets). Keep the separate part files as well; the user sometimes needs them.
+
+A project sets this up on its own, with no tooling change:
+
+1. Enable OpenSCAD's experimental `lazy-union` in the project's `config.yaml` only, never in the root config:
+   ```yaml
+   openscad:
+     enable: [lazy-union]
+   ```
+   With it, every object at the top level of the file becomes its own object in the 3MF, keeping its `color()`, in shared coordinates.
+2. Add a part selector value that emits each object at file level, not inside `main()` or any module, and not under a shared `translate`, `rotate` or `color`. Any common parent node merges them into one object again. Repeat the transform on each object:
+   ```openscad
+   main();
+
+   if (part == "label_combined") {
+     translate([layout_x, 0, 0]) color("dimgray") label_body();
+     translate([layout_x, 0, 0]) color("white") label_inlay();
+   }
+   ```
+   An `if` block is fine; it does not create a parent node.
+3. Declare the combined part with `preview: false` next to the separate parts:
+   ```yaml
+   - id: white
+     label: WHITE label clip, body and text inlay
+     file: src/main.scad
+     defines: { part: "label_combined", label_text: "WHITE" }
+     preview: false
+   ```
+   `preview: false` is required. `check` and the viewer merge all objects of a 3MF into one mesh, so the touching faces between body and inlay show up as hundreds of non-manifold edges and the render reports no size. The separate parts carry the same geometry; they stay in the preview and are what `check` tests.
+4. `lazy-union` changes semantics for the whole project: any other part that relied on several top-level objects being fused needs an explicit `union()`. Check that the separate parts still render and check the same as before.
+5. Verify the export: `unzip -p out/<file>.3mf 3D/3dmodel.model | grep -c '<object'` must be at least 2.
+6. Record the setup under Decisions in `brief.md`: lazy-union is on, the combined branch must stay at file level, and why the combined parts are `preview: false`.
+
+The viewer's 3MF download exports only previewed parts, so it gives the separate files. Tell the user to get merged files with `pnpm scad export <id> --part <combined-ids> --formats 3mf`, and that in Bambu Studio they answer yes to "Load as a single object with multiple parts?" and then assign a filament per part.
+
+Reference: `workspace/laundry-bag-clip` (parts `white` and `black`).
 
 ## 2D parts
 

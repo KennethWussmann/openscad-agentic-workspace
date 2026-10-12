@@ -156,7 +156,8 @@ parts:
 
 - A single entry file with a `part` selector parameter is the usual pattern (see the example above). Parameters set through a part's `defines` are hidden from the parameter panel.
 - Place parts in their assembled position in the assembly preview so the user can check the fit (sections are great for this), but keep each part's own geometry printable. If print orientation differs from assembly orientation, add a `print_layout` boolean parameter or a separate `-print` part.
-- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm scad export` (used for 2D outlines, see scad-export).
+- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm scad export` (used for 2D outlines and merged 3MFs, see scad-export).
+- Parts that belong together in an exact position (second-color inlays and text, multi-material inserts) also need a merged 3MF, because slicers lose the alignment when the user imports separate files. Plan for it from the start: keep body and inlay as separate modules with their own `color()`, and follow "Merged multi-object 3MF" in scad-export.
 - Separate files per part (`src/base.scad`, `src/lid.scad`) sharing `src/dims.scad` via `include` also works; pick one style per project.
 
 ## Quality and performance
