@@ -26,11 +26,27 @@ Agents pick up `AGENTS.md` and the skills in `.agents/skills/`. If you clone the
 
 ## How it works
 
-```
-you  ->  agent  ->  workspace/<project>/src/*.scad
-                     |  pnpm scad render        (OpenSCAD CLI)
-                     v
-                  preview/*.3mf, sheet.png  ->  dev server  ->  viewer in the browser (live)
+```mermaid
+flowchart LR
+    you([You]) -->|request| agent[Agent]
+    you -.->|edits in editor| src
+    agent -->|writes| src["workspace/#lt;project#gt;/src/*.scad"]
+    agent -->|pnpm scad render| cli[OpenSCAD CLI]
+    src --> cli
+    cli --> preview["preview/<br/>*.3mf, sheet.png, snapshots"]
+    preview -->|contact sheet, sections| agent
+    agent -->|pnpm scad checkpoint| versions["versions/vNNN"]
+
+    subgraph dev [Dev server]
+        watcher[File watcher] -->|re-render on save| cli
+        preview --> push[Live push]
+    end
+
+    src -.->|watched| watcher
+    push --> viewer[Browser viewer]
+    viewer -->|Send to agent| proposals["proposals/"]
+    proposals -->|pnpm scad proposal| agent
+    viewer -.->|shows model live| you
 ```
 
 - `pnpm scad open <project>` starts the Vite dev server in the background. If a viewer tab is already open, it switches that tab to the project; otherwise it opens your default browser.
