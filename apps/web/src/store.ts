@@ -1,4 +1,4 @@
-import type { Annotation, DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/core/protocol'
+import type { Annotation, DefineValue, ExportResult, ProjectState, ProjectSummary, Vec3 } from '@scad/core/protocol'
 import { create } from 'zustand'
 
 export type Axis = 'x' | 'y' | 'z' | 'free'
@@ -39,12 +39,16 @@ export type Tool = 'orbit' | 'measure' | 'annotate'
 
 export type NoteDraft = Omit<Annotation, 'n'> & { id: number }
 
+export type ExportNotice = { id: number; result: ExportResult | null; error: string | null }
+
 export type Store = {
   projects: ProjectSummary[]
   projectId: string | null
   project: ProjectState | null
   error: string | null
   rendering: { preview: boolean; tweak: boolean }
+  exporting: boolean
+  exportNotice: ExportNotice | null
   versionId: string | null
   ghostId: string | null
   hidden: string[]
@@ -68,6 +72,9 @@ export type Store = {
   setProject: (p: ProjectState | null, error?: string | null) => void
   selectProject: (id: string | null) => void
   setRendering: (kind: 'preview' | 'tweak', value: boolean) => void
+  setExporting: (value: boolean) => void
+  showExportNotice: (notice: Omit<ExportNotice, 'id'>) => void
+  dismissExportNotice: () => void
   setVersion: (id: string | null) => void
   setGhost: (id: string | null) => void
   togglePart: (id: string) => void
@@ -128,6 +135,7 @@ const loadDisplay = (): Display => {
 
 let measureId = 0
 let noteId = 0
+let noticeId = 0
 
 export const useStore = create<Store>((set, get) => ({
   projects: [],
@@ -135,6 +143,8 @@ export const useStore = create<Store>((set, get) => ({
   project: null,
   error: null,
   rendering: { preview: false, tweak: false },
+  exporting: false,
+  exportNotice: null,
   versionId: null,
   ghostId: null,
   hidden: [],
@@ -162,9 +172,11 @@ export const useStore = create<Store>((set, get) => ({
       project,
       error,
       rendering: { preview: Boolean(project?.rendering), tweak: false },
+      exporting: Boolean(project?.exporting),
       ...(sameProject
         ? {}
         : {
+            exportNotice: null,
             versionId: null,
             ghostId: null,
             hidden: [],
@@ -189,6 +201,9 @@ export const useStore = create<Store>((set, get) => ({
     set({ projectId })
   },
   setRendering: (kind, value) => set((s) => ({ rendering: { ...s.rendering, [kind]: value } })),
+  setExporting: (exporting) => set({ exporting }),
+  showExportNotice: (notice) => set({ exportNotice: { ...notice, id: ++noticeId } }),
+  dismissExportNotice: () => set({ exportNotice: null }),
   setVersion: (versionId) => set((s) => ({ versionId, ghostId: s.ghostId === versionId ? null : s.ghostId })),
   setGhost: (ghostId) => set({ ghostId }),
   togglePart: (id) =>

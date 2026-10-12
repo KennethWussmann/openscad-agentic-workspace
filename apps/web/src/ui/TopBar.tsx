@@ -2,10 +2,12 @@ import type { ProjectState, ProjectSummary } from '@scad/core/protocol'
 import { HelpCircle, Maximize2, RefreshCw, SquareTerminal } from 'lucide-react'
 import { requestRender } from '../api.ts'
 import { useStore } from '../store.ts'
+import { ExportButton } from './ExportButton.tsx'
 
 const Status = ({ project }: { project: ProjectState | null }) => {
   const rendering = useStore((s) => s.rendering)
-  const busy = rendering.preview || rendering.tweak
+  const exporting = useStore((s) => s.exporting)
+  const busy = rendering.preview || rendering.tweak || exporting
   const render = project?.render
   const warnings = render?.parts.reduce((n, p) => n + p.diagnostics.filter((d) => d.level === 'warning').length, 0) ?? 0
   const state = busy ? 'busy' : !render ? 'idle' : render.status
@@ -14,9 +16,11 @@ const Status = ({ project }: { project: ProjectState | null }) => {
       <span className="status-light" />
       <span className="mono">
         {busy
-          ? rendering.tweak
-            ? 'rendering tweak'
-            : 'rendering'
+          ? exporting
+            ? 'exporting'
+            : rendering.tweak
+              ? 'rendering tweak'
+              : 'rendering'
           : !render
             ? 'not rendered'
             : `${render.status === 'ok' ? 'rendered' : 'failed'} ${render.durationMs} ms`}
@@ -65,6 +69,7 @@ export const TopBar = ({ projects, project }: { projects: ProjectSummary[]; proj
             <RefreshCw size={15} />
           </button>
         )}
+        {project && <ExportButton project={project} />}
         <button type="button" className="icon-btn" title="Console (C)" onClick={toggleConsole}>
           <SquareTerminal size={15} />
         </button>

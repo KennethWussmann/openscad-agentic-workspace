@@ -4,6 +4,9 @@ import {
   type ChangedEvent,
   type DefineValue,
   EVENTS,
+  type ExportEvent,
+  type ExportResult,
+  type ExportStartEvent,
   type NavigateEvent,
   type PresenceEvent,
   type ProjectState,
@@ -36,6 +39,9 @@ export const requestTweak = (id: string, params: Record<string, DefineValue>) =>
 
 export const clearTweak = (id: string) => request(`/projects/${encodeURIComponent(id)}/tweak`, { method: 'DELETE' })
 
+export const requestExport = (id: string, overrides: Record<string, DefineValue>) =>
+  request<ExportResult>(`/projects/${encodeURIComponent(id)}/export`, { method: 'POST', body: { overrides } })
+
 export const sendProposal = (id: string, params: Record<string, DefineValue>, note: string) =>
   request<{ file: string }>(`/projects/${encodeURIComponent(id)}/proposal`, {
     method: 'POST',
@@ -62,6 +68,8 @@ export type ServerHandlers = {
   onRender: (e: RenderEvent) => void
   onChanged: (e: ChangedEvent) => void
   onNavigate: (e: NavigateEvent) => void
+  onExportStart: (e: ExportStartEvent) => void
+  onExport: (e: ExportEvent) => void
 }
 
 const tabId = () => {
@@ -80,6 +88,8 @@ export const connect = (handlers: ServerHandlers, currentProject: () => string |
   hot.on(EVENTS.render, handlers.onRender)
   hot.on(EVENTS.changed, handlers.onChanged)
   hot.on(EVENTS.navigate, handlers.onNavigate)
+  hot.on(EVENTS.exportStart, handlers.onExportStart)
+  hot.on(EVENTS.export, handlers.onExport)
   const beat = () => hot.send(EVENTS.presence, { tab, project: currentProject() } satisfies PresenceEvent)
   beat()
   const timer = setInterval(beat, 5000)
@@ -92,10 +102,24 @@ export const connect = (handlers: ServerHandlers, currentProject: () => string |
     hot.off(EVENTS.render, handlers.onRender)
     hot.off(EVENTS.changed, handlers.onChanged)
     hot.off(EVENTS.navigate, handlers.onNavigate)
+    hot.off(EVENTS.exportStart, handlers.onExportStart)
+    hot.off(EVENTS.export, handlers.onExport)
     leave()
   }
 }
 
 export const announce = (project: string | null) => {
   import.meta.hot?.send(EVENTS.presence, { tab: tabId(), project } satisfies PresenceEvent)
+}
+
+export const download = async (files: { url: string; name: string }[]) => {
+  for (const [i, file] of files.entries()) {
+    if (i) await new Promise((resolve) => setTimeout(resolve, 400))
+    const a = document.createElement('a')
+    a.href = file.url
+    a.download = file.name
+    document.body.append(a)
+    a.click()
+    a.remove()
+  }
 }

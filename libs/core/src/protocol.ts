@@ -9,7 +9,24 @@ export const EVENTS = {
   navigate: 'scad:navigate',
   presence: 'scad:presence',
   leave: 'scad:leave',
+  exportStart: 'scad:export-start',
+  export: 'scad:export',
 } as const
+
+export const EXPORT_FORMATS = [
+  '3mf',
+  'stl',
+  'asciistl',
+  'obj',
+  'off',
+  'wrl',
+  'png',
+  'svg',
+  'dxf',
+  'pdf',
+  'csg',
+] as const
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]
 
 export type Vec3 = [number, number, number]
 
@@ -369,10 +386,31 @@ export type ProjectState = {
   render: RenderResult | null
   tweak: RenderResult | null
   rendering: boolean
+  exporting: boolean
   versions: VersionMeta[]
   proposals: Proposals
 }
 
+export type ExportedFile = {
+  part: string
+  format: ExportFormat
+  file: string
+  ok: boolean
+  diagnostics: Diagnostic[]
+}
+
+export type ExportResult = {
+  project: string
+  version: string
+  outDir: string
+  exportedAt: string
+  overrides: Record<string, DefineValue>
+  files: ExportedFile[]
+  meshCheck: CheckResult | null
+}
+
+export type ExportStartEvent = { project: string; tweaked: boolean }
+export type ExportEvent = { project: string; result: ExportResult | null; error?: string }
 export type RenderStartEvent = { project: string; kind: 'preview' | 'tweak' }
 export type RenderEvent = { project: string; kind: 'preview' | 'tweak'; result: RenderResult }
 export type ChangedEvent = { project: string }

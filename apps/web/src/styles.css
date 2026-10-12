@@ -1921,3 +1921,153 @@ button.note-balloon:hover {
   color: var(--dim);
   font-size: 9px;
 }
+
+.export-pick {
+  position: relative;
+}
+
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.icon-btn.is-busy {
+  color: var(--cyan);
+  animation: pulse 0.9s ease-in-out infinite;
+}
+
+.export-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 270px;
+  display: grid;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px #0009;
+  z-index: 20;
+  animation: rise 0.18s ease-out both;
+}
+
+.export-menu button {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+
+.export-menu button:hover {
+  background: var(--panel-2);
+}
+
+.export-menu small {
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.export-toast {
+  position: absolute;
+  top: 12px;
+  right: 156px;
+  width: min(360px, calc(100% - 190px));
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #0b1117f2;
+  border: 1px solid var(--rule-2);
+  border-left: 3px solid var(--green);
+  z-index: 5;
+  animation: rise 0.25s ease-out both;
+}
+
+.export-toast.is-warn {
+  border-left-color: var(--amber);
+}
+
+.export-toast.is-fail {
+  border-left-color: var(--red);
+}
+
+.export-toast header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.export-toast header .icon-btn {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+}
+
+.export-toast ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.export-files li {
+  display: grid;
+  gap: 2px;
+  color: var(--ink-2);
+}
+
+.export-files li.is-failed span {
+  color: var(--red);
+}
+
+.export-files small,
+.export-meta {
+  margin: 0;
+  color: var(--dim);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.export-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 12px;
+}
+
+.export-check li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: var(--ink-2);
+}
+
+.export-check em,
+.check-tag {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 2px;
+  background: var(--panel-2);
+}
+
+.check-tag.is-pass {
+  color: var(--green);
+}
+
+.is-warn.check-tag,
+.export-check .is-warn {
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+
+.is-fail.check-tag,
+.export-check .is-fail {
+  color: var(--red);
+  background: #3a1715;
+}

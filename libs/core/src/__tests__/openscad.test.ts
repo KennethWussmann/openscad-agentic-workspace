@@ -121,5 +121,23 @@ describe.skipIf(!found.openscad)('with OpenSCAD', () => {
       ['out/kit-lid.stl', true],
     ])
     expect(readFileSync(path.join(layout.out, 'kit-base.stl')).subarray(0, 5).toString()).not.toBe('solid')
+    expect(exported.meshCheck).toBeNull()
+  })
+
+  it('exports tweaked values under their own name and checks the exported meshes', async () => {
+    const exported = await exportProject({
+      paths,
+      project: 'kit',
+      openscad,
+      formats: ['3mf'],
+      parts: ['base'],
+      overrides: { size: 30 },
+      meshCheck: true,
+    })
+    expect(exported.version).toBe('tweaked')
+    expect(exported.files.map((f) => [f.file, f.ok])).toEqual([['out/kit-base-tweaked.3mf', true]])
+    expect(exported.meshCheck?.parts.map((p) => [p.id, p.bbox?.size])).toEqual([['base', [30, 30, 2]]])
+    const record = JSON.parse(readFileSync(path.join(projectLayout(paths, 'kit').out, 'export.json'), 'utf8'))
+    expect(record).toMatchObject({ version: 'tweaked', overrides: { size: 30 } })
   })
 })

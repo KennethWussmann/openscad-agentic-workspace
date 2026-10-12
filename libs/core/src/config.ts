@@ -2,22 +2,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { Document, parseDocument, parse as parseYaml } from 'yaml'
 import { z } from 'zod'
 import type { Paths } from './paths.ts'
-import type { DefineValue, PrintProfile, Tolerances } from './protocol.ts'
-
-export const EXPORT_FORMATS = [
-  '3mf',
-  'stl',
-  'asciistl',
-  'obj',
-  'off',
-  'wrl',
-  'png',
-  'svg',
-  'dxf',
-  'pdf',
-  'csg',
-] as const
-export type ExportFormat = (typeof EXPORT_FORMATS)[number]
+import { type DefineValue, EXPORT_FORMATS, type PrintProfile, type Tolerances } from './protocol.ts'
 
 export const DefineValueSchema: z.ZodType<DefineValue> = z.lazy(() =>
   z.union([z.number(), z.string(), z.boolean(), z.array(DefineValueSchema)]),

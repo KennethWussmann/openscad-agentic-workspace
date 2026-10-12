@@ -13,6 +13,13 @@ pnpm scad export <id> --part lid
 
 Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project}-{part}`; placeholders `{project}`, `{part}`, `{version}`). `out/export.json` lists every file with its status. `{version}` is the latest checkpoint id when the working copy matches it, otherwise `wip`; checkpoint first so delivered files map to a version.
 
+## Exports from the viewer
+
+The user can export 3MF from the browser viewer (download button in the top bar). It runs the same export with `formats: [3mf]` for all parts with `preview: true`, writes to `out/` and overwrites `out/export.json`. Read `export.json` to see what the user last exported:
+
+- `overrides` holds the tweaked parameter values when the user exported with tweaks. Those files are named `*-tweaked.3mf`, `version` is `tweaked`, and the geometry does not exist in the source. If the user wants to keep them, apply the values to the source (like a parameter proposal) and checkpoint.
+- `meshCheck` is the printability check run on the exported 3MF files themselves (same structure as `check.json`). It does not update `preview/check.json`, so still run `pnpm scad check` before your own checkpoint or export.
+
 ## Formats
 
 Configured in `config.yaml` under `export.formats` (root default `[3mf, stl]`), overridable per project:

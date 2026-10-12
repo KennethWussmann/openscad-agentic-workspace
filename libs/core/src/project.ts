@@ -158,7 +158,7 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
     .sort((a, b) => b.updated - a.updated)
 }
 
-export const projectState = (paths: Paths, id: string, rendering = false): ProjectState => {
+export const projectState = (paths: Paths, id: string, rendering = false, exporting = false): ProjectState => {
   const layout = requireProject(paths, id)
   const config = loadProjectConfig(paths, layout.config, id)
   return {
@@ -170,6 +170,7 @@ export const projectState = (paths: Paths, id: string, rendering = false): Proje
     render: readRender(paths, id, 'preview'),
     tweak: readRender(paths, id, 'tweak'),
     rendering,
+    exporting,
     versions: listVersions(paths, id),
     proposals: readProposals(paths, id),
   }

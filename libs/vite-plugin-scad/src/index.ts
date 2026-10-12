@@ -8,6 +8,9 @@ import {
   clearParamProposal,
   type DefineValue,
   EVENTS,
+  type ExportEvent,
+  type ExportStartEvent,
+  exportProject,
   findRepoRoot,
   type Health,
   isInside,
@@ -101,6 +104,7 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
   mkdirSync(paths.workspace, { recursive: true })
   const tweaks = new Map<string, Record<string, DefineValue>>()
   const presence = new Map<string, { project: string | null; seen: number }>()
+  const exporting = new Set<string>()
 
   const send = <T>(event: string, data: T) => server.ws.send({ type: 'custom', event, data })
 
@@ -230,7 +234,7 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
     if (!projectExists(paths, id)) return json(res, 404, { error: `project "${id}" does not exist` })
     const action = parts[2]
     if (method === 'GET' && !action) {
-      const state = projectState(paths, id, coordinator.isRendering(id))
+      const state = projectState(paths, id, coordinator.isRendering(id), exporting.has(id))
       if (!state.render && !state.rendering) {
         request(id, 'preview').catch(() => undefined)
         state.rendering = true
@@ -239,6 +243,39 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
     }
     if (method === 'GET' && action === 'file') return serveFile(res, id, parts.slice(3).join('/'))
     if (method === 'POST' && action === 'render') return json(res, 200, await request(id, 'preview'))
+    if (method === 'POST' && action === 'export') {
+      const body = (await readBody(req)) as { overrides?: unknown }
+      const overrides = body.overrides ?? {}
+      if (typeof overrides !== 'object' || overrides === null || Array.isArray(overrides))
+        return json(res, 400, { error: 'overrides must be an object' })
+      if (exporting.has(id)) return json(res, 409, { error: 'an export is already running' })
+      const values = overrides as Record<string, DefineValue>
+      const parts = projectState(paths, id)
+        .parts.filter((p) => p.preview)
+        .map((p) => p.id)
+      exporting.add(id)
+      send<ExportStartEvent>(EVENTS.exportStart, { project: id, tweaked: Object.keys(values).length > 0 })
+      try {
+        const openscad = await resolveOpenscad(paths)
+        const result = await exportProject({
+          paths,
+          project: id,
+          openscad,
+          formats: ['3mf'],
+          parts,
+          overrides: values,
+          meshCheck: true,
+        })
+        send<ExportEvent>(EVENTS.export, { project: id, result })
+        return json(res, 200, result)
+      } catch (e) {
+        const error = e instanceof Error ? e.message : String(e)
+        send<ExportEvent>(EVENTS.export, { project: id, result: null, error })
+        return json(res, 500, { error })
+      } finally {
+        exporting.delete(id)
+      }
+    }
     if (method === 'POST' && action === 'tweak') {
       const body = (await readBody(req)) as { params?: Record<string, DefineValue> }
       tweaks.set(id, body.params ?? {})

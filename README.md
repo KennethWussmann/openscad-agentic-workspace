@@ -2,6 +2,9 @@
 
 A workspace for building parametric 3D models together with a coding agent. The agent writes OpenSCAD, renders through the OpenSCAD CLI and checkpoints every change. A live viewer in your browser shows the model taking shape while the agent works.
 
+> [!WARNING]
+> This entire project is vibe coded. I did not write or read any of the code myself. Use it at your own risk.
+
 ![The viewer with parameters, view tools, bounding box dimensions and the version timeline](docs/assets/viewer.jpg)
 
 ## Setup
@@ -78,6 +81,7 @@ flowchart LR
   ![A note pinned to an edge of the model, with the inline editor open and the note listed in the Notes panel](docs/assets/viewer-notes.jpg)
 
 - **Version timeline:** open any checkpoint, or overlay one as a ghost to compare.
+- **3MF export:** the download button in the top bar runs the same export as `pnpm scad export`, limited to 3MF and the parts shown in the viewer. The files are written to `out/` (listed in `out/export.json`) and downloaded by the browser, one file per part. With tweaked parameters, a menu asks whether to export the source or apply the tweaks. Tweaked files are named `*-tweaked.3mf`, labelled `tweaked` instead of a version, and their values are stored in `export.json`. While an older checkpoint is open, the button downloads that version's stored preview 3MF instead. After every export the [printability check](#printability-check) runs on the exported files, and a toast shows the files with PASS, WARN or FAIL. FAIL does not block the export. Only one export per project runs at a time.
 - **Errors and console:** OpenSCAD errors appear on top of the last good model, and the console shows ECHO output and warnings.
 
 Press `?` in the viewer for all keys.
@@ -125,7 +129,7 @@ Wall thickness is approximate. From each triangle's centroid, a ray is cast inwa
 - Wedges and knife edges count where their faces are close to opposite.
 - Gaps and clearances between bodies are not measured.
 
-`checkpoint`, `export` and `status` note when the check is missing, older than the render, or failed.
+`checkpoint`, `export` and `status` note when the check is missing, older than the render, or failed. Exports from the viewer check the exported 3MF files directly and store the result as `meshCheck` in `out/export.json`, without touching `preview/check.json`.
 
 ## Configuration
 

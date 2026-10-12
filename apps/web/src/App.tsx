@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { Vector3 } from 'three'
 import { announce, clearTweak, connect, fetchProject, fetchProjects, requestTweak } from './api.ts'
 import { useStore } from './store.ts'
+import { ExportToast } from './ui/ExportToast.tsx'
 import { AnalysisLegend, Console, Diagnostics, Help, TitleBlock } from './ui/Overlays.tsx'
 import { Sidebar } from './ui/Sidebar.tsx'
 import { Timeline } from './ui/Timeline.tsx'
@@ -60,6 +61,14 @@ const useServer = () => {
             if (e.project === useStore.getState().projectId) refreshProject()
           },
           onNavigate: (e) => useStore.getState().selectProject(e.project),
+          onExportStart: (e) => {
+            if (e.project === useStore.getState().projectId) useStore.getState().setExporting(true)
+          },
+          onExport: (e) => {
+            if (e.project !== useStore.getState().projectId) return
+            useStore.getState().setExporting(false)
+            useStore.getState().showExportNotice({ result: e.result, error: e.error ?? null })
+          },
         },
         () => useStore.getState().projectId,
       ),
@@ -189,7 +198,7 @@ export const App = () => {
   const error = useStore((s) => s.error)
   const tool = useStore((s) => s.tool)
   const pending = useStore((s) => s.pending)
-  const rendering = useStore((s) => s.rendering.preview)
+  const rendering = useStore((s) => s.rendering.preview || s.exporting)
   const embed = useStore((s) => s.embed)
   const toggleEmbed = useStore((s) => s.toggleEmbed)
   return (
@@ -226,6 +235,7 @@ export const App = () => {
             {!embed && <TitleBlock project={project} />}
             {!embed && <AnalysisLegend project={project} />}
             <Console project={project} />
+            {!embed && <ExportToast />}
             {!embed && <Timeline project={project} />}
           </section>
         </main>
