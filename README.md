@@ -2,6 +2,8 @@
 
 A workspace for building parametric 3D models together with a coding agent. The agent writes OpenSCAD, renders through the OpenSCAD CLI and checkpoints every change. A live viewer in your browser shows the model taking shape while the agent works.
 
+![The viewer with parameters, view tools, bounding box dimensions and the version timeline](docs/assets/viewer.jpg)
+
 ## Setup
 
 Requirements: Node.js 24+, pnpm (via `corepack enable`), git, and a recent OpenSCAD development snapshot (2024 or newer, for the Manifold backend and colored 3MF).
@@ -33,6 +35,10 @@ you  ->  agent  ->  workspace/<project>/src/*.scad
 
 - `pnpm scad open <project>` starts the Vite dev server in the background. If a viewer tab is already open, it switches that tab to the project; otherwise it opens your default browser.
 - The dev server watches `src/`, `config.yaml` and shared libraries, and re-renders whenever a file is saved. That includes your own edits in an editor.
+- With `?embed=1` the viewer drops its panels and shows only the viewport, which fits next to the source in an editor tab:
+
+  ![main.scad next to the embedded viewer in VS Code](docs/assets/editor-split-view.jpg)
+
 - The agent inspects its own work from a 2x2 contact sheet (iso, front, right, top) and from section snapshots rendered by OpenSCAD.
 - After every finished request the agent creates a checkpoint (`versions/vNNN`). It contains the sources, the models and the parameter values, so you can go back to any version or compare against it.
 
@@ -113,3 +119,7 @@ pnpm build
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests and build.
+
+## Honorable Mentions
+
+Inspired by [iKasch/freecad-py-agent](https://github.com/iKasch/freecad-py-agent/)
