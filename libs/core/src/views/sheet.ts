@@ -4,6 +4,7 @@ import path from 'node:path'
 import type { Diagnostic } from '@scad/protocol'
 import { PNG } from 'pngjs'
 import { concurrency, pool } from '../render/pool.ts'
+import { modelOutlines } from './outline.ts'
 import { renderView, VIEWS, type ViewContext, type ViewName } from './views.ts'
 
 export const SHEET_LAYOUT: ViewName[] = ['iso', 'front', 'right', 'top']
@@ -34,6 +35,7 @@ export const renderSheet = async (ctx: ViewContext, models: string[], out: strin
   const dir = path.join(ctx.temp, `sheet-${randomBytes(4).toString('hex')}`)
   mkdirSync(dir, { recursive: true })
   try {
+    const outlines = modelOutlines(models.filter((m) => existsSync(m)))
     const files = SHEET_LAYOUT.map((view) => path.join(dir, `${view}.png`))
     const results = await pool(SHEET_LAYOUT, Math.max(2, concurrency()), (view) =>
       renderView(ctx, {
@@ -43,6 +45,7 @@ export const renderSheet = async (ctx: ViewContext, models: string[], out: strin
         height: tile,
         out: files[SHEET_LAYOUT.indexOf(view)],
         axes: view !== 'iso',
+        outlines,
       }),
     )
     const diagnostics = results.flat()

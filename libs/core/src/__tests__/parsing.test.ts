@@ -1,7 +1,9 @@
+import type { Vec3 } from '@scad/protocol'
 import { describe, expect, it } from 'vitest'
 import {
   fileName,
   formatDefine,
+  OUTLINE_COLOR,
   parseDefineInput,
   parseDepsFile,
   parseDiagnostics,
@@ -99,6 +101,26 @@ describe('wrapperSource', () => {
     const src = wrapperSource(['/w/a.3mf'], { focus: { center: [10, 20, 2], radius: 4 } })
     expect(src).toMatch(/^intersection\(\) \{\n {2}union\(\) \{/)
     expect(src).toContain('translate([6, 16, -2]) cube(8)')
+  })
+
+  it('draws outline segments as thin dark boxes, except in sections and focus views', () => {
+    const outlines: [Vec3, Vec3][] = [
+      [
+        [0, 0, 0],
+        [30, 0, 0],
+      ],
+      [
+        [0, 0, 0],
+        [0, 0, 30],
+      ],
+    ]
+    const src = wrapperSource(['/w/a.3mf'], { outlines })
+    expect(src).toContain(`color("${OUTLINE_COLOR}") polyhedron(`)
+    expect(src).toContain('[30,0.05,0.05]')
+    expect(src.match(/\[\d+,\d+,\d+,\d+\]/g)).toHaveLength(12)
+    expect(wrapperSource(['/w/a.3mf'], { outlines, focus: { center: [0, 0, 0], radius: 4 } })).not.toContain(
+      'polyhedron',
+    )
   })
 })
 

@@ -7,6 +7,7 @@ import { parseDiagnostics } from '../openscad/diagnostics.ts'
 import type { Openscad } from '../openscad/discovery.ts'
 import { runOpenscad } from '../openscad/run.ts'
 import type { Paths } from '../workspace/paths.ts'
+import { outlineSource, type Segment } from './outline.ts'
 
 export const VIEWS = {
   iso: [55, 0, 25],
@@ -46,6 +47,7 @@ export type WrapperOptions = {
   section?: Section | null
   bbox?: BBox | null
   focus?: Focus | null
+  outlines?: Segment[] | null
 }
 
 const indent = (src: string) => src.replace(/^/gm, '  ')
@@ -63,11 +65,15 @@ const sectionSource = (body: string, section: Section, bbox: BBox | null) => {
 const focusSource = (body: string, { center, radius }: Focus) =>
   `intersection() {\n${indent(body)}\n  translate([${center.map((c) => c - radius).join(', ')}]) cube(${2 * radius});\n}`
 
-export const wrapperSource = (models: string[], { section = null, bbox = null, focus = null }: WrapperOptions = {}) => {
+export const wrapperSource = (
+  models: string[],
+  { section = null, bbox = null, focus = null, outlines = null }: WrapperOptions = {},
+) => {
   let body = `union() {\n${models.map((m) => `  import(${scadString(m)});`).join('\n')}\n}`
   if (section) body = sectionSource(body, section, bbox)
   if (focus) body = focusSource(body, focus)
-  return `${body}\n`
+  const outline = outlines && !section && !focus ? outlineSource(outlines) : ''
+  return `${body}\n${outline}`
 }
 
 export const sectionView = (section: Section): Vec3 => {
@@ -86,6 +92,7 @@ export type RenderViewOptions = {
   section?: Section | null
   bbox?: BBox | null
   focus?: Focus | null
+  outlines?: Segment[] | null
   axes?: boolean
 }
 

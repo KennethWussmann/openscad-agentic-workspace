@@ -60,7 +60,8 @@ flowchart LR
 
   ![main.scad next to the embedded viewer in VS Code](docs/assets/editor-split-view.jpg)
 
-- The agent inspects its own work from a 2x2 contact sheet (iso, front, right, top) and from section snapshots rendered by OpenSCAD.
+- The agent inspects its own work from a 2x2 contact sheet (iso, front, right, top) and from section snapshots rendered by OpenSCAD. Sharp edges are drawn as dark outlines, so holes and openings show even in straight views.
+- Models are designed in their print orientation: the viewer, the check and the exported files show the part as it lies on the bed.
 - Before checkpointing or exporting, the agent runs `pnpm scad check` (see [Printability check](#printability-check)).
 - After every finished request the agent creates a checkpoint (`versions/vNNN`). It contains the sources, the models and the parameter values, so you can go back to any version or compare against it.
 
@@ -96,7 +97,7 @@ Press `?` in the viewer for all keys.
 | `new <project>` | Create `workspace/<project>` with a parametric template |
 | `open [project]` / `serve` / `stop` | Viewer and background dev server |
 | `render <project>` | Render all parts, then the contact sheet |
-| `snapshot <project> --section x=10 [--focus x,y,z]` | Extra views and cross-sections as PNG, optionally zoomed in on one point |
+| `snapshot <project> --section x=10 [--focus x,y,z] [-D name=value]` | Extra views and cross-sections as PNG, optionally zoomed in on one point. `-D` renders throwaway parameter values for that image only, e.g. the assembled parts of a project that is modelled in print orientation |
 | `params <project>` | Customizer parameters |
 | `printer [project]` | Active printer profile with tolerances, and all defined printers |
 | `check <project>` | Printability check against the active printer: manifold, bed fit, thin walls, floating bodies, overhangs (FDM) or islands and trapped resin (resin) |

@@ -6,10 +6,10 @@ description: Export workspace models to files - STL, 3MF, OBJ, OFF, WRL, PNG ren
 # Exporting
 
 ```bash
-pnpm scad release <id> -m "..."                # check, checkpoint, then export the configured formats
-pnpm scad export <id>                          # formats from config
-pnpm scad export <id> --formats 3mf,stl,png   # override
-pnpm scad export <id> --part lid
+pnpm -s scad release <id> -m "..."                # check, checkpoint, then export the configured formats
+pnpm -s scad export <id>                          # formats from config
+pnpm -s scad export <id> --formats 3mf,stl,png   # override
+pnpm -s scad export <id> --part lid
 ```
 
 Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project}-{part}`; placeholders `{project}`, `{part}`, `{version}`). `out/export.json` lists every file with its status. `{version}` is the latest checkpoint id when the working copy matches it, otherwise `wip`; checkpoint first so delivered files map to a version.
@@ -19,7 +19,7 @@ Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project
 The user can export 3MF from the browser viewer (download button in the top bar). It runs the same export with `formats: [3mf]` for all parts with `preview: true`, writes to `out/` and overwrites `out/export.json`. Read `export.json` to see what the user last exported:
 
 - `overrides` holds the tweaked parameter values when the user exported with tweaks. Those files are named `*-tweaked.3mf`, `version` is `tweaked`, and the geometry does not exist in the source. If the user wants to keep them, apply the values to the source (like a parameter proposal) and checkpoint.
-- `meshCheck` is the printability check run on the exported 3MF files themselves (same structure as `check.json`). It does not update `preview/check.json`, so still run `pnpm scad check` before your own checkpoint or export.
+- `meshCheck` is the printability check run on the exported 3MF files themselves (same structure as `check.json`). It does not update `preview/check.json`, so still run `pnpm -s scad check` before your own checkpoint or export.
 
 ## Formats
 
@@ -77,7 +77,7 @@ A project sets this up on its own, with no tooling change:
 5. Verify the export: `unzip -p out/<file>.3mf 3D/3dmodel.model | grep -c '<object'` must be at least 2.
 6. Record the setup under Decisions in `brief.md`: lazy-union is on, the combined branch must stay at file level, and why the combined parts are `preview: false`.
 
-The viewer's 3MF download exports only previewed parts, so it gives the separate files. Tell the user to get merged files with `pnpm scad export <id> --part <combined-ids> --formats 3mf`, and that in Bambu Studio they answer yes to "Load as a single object with multiple parts?" and then assign a filament per part.
+The viewer's 3MF download exports only previewed parts, so it gives the separate files. Tell the user to get merged files with `pnpm -s scad export <id> --part <combined-ids> --formats 3mf`, and that in Bambu Studio they answer yes to "Load as a single object with multiple parts?" and then assign a filament per part.
 
 Reference: `workspace/laundry-bag-clip` (parts `white` and `black`).
 
@@ -99,11 +99,11 @@ mode = "3d"; // [3d, 2d]
 if (mode == "2d") panel_profile(); else linear_extrude(sheet_t) panel_profile();
 ```
 
-Export it with `pnpm scad export <id> --part panel-outline --formats svg,dxf`. Exporting a 2D part as a mesh format (or a 3D part as svg/dxf) fails for that file only.
+Export it with `pnpm -s scad export <id> --part panel-outline --formats svg,dxf`. Exporting a 2D part as a mesh format (or a 3D part as svg/dxf) fails for that file only.
 
 ## Before delivering for printing
 
-Deliver with `pnpm scad release <id> -m "..."`: it runs the check, stops on FAIL, then checkpoints and exports, so the files always map to a checked version. Use plain `pnpm scad export <id>` only when the current state is already checked and checkpointed, or for extra formats and parts. The check covers most of this list against the active printer profile (`pnpm scad printer <id>`). If the user prints on a different printer or nozzle, select it in the project's `config.yaml` under `print` first. `export` notes when the check is missing, outdated or failed.
+Deliver with `pnpm -s scad release <id> -m "..."`: it runs the check, stops on FAIL, then checkpoints and exports, so the files always map to a checked version. Use plain `pnpm -s scad export <id>` only when the current state is already checked and checkpointed, or for extra formats and parts. The check covers most of this list against the active printer profile (`pnpm -s scad printer <id>`). If the user prints on a different printer or nozzle, select it in the project's `config.yaml` under `print` first. `export` notes when the check is missing, outdated or failed.
 
 Run through this and fix or flag anything that fails:
 
@@ -112,7 +112,7 @@ Run through this and fix or flag anything that fails:
 - Each part sits on z = 0 in its print orientation, nothing floating, one body per part unless intended (`check` bed and bodies).
 - Bounding boxes fit the user's printer bed (`check` bed; ask for the bed size if unknown).
 - Wall thickness follows the scad-craft defaults (`check` walls); check a focused section snapshot (`--focus`) through the thinnest reported region.
-- Clearances, fits and screw holes use the `/* [Print] */` tolerance parameters, and their defaults match the tolerances of `pnpm scad printer <id>`. `check` does not measure clearances between parts, so verify this yourself.
+- Clearances, fits and screw holes use the `/* [Print] */` tolerance parameters, and their defaults match the tolerances of `pnpm -s scad printer <id>`. `check` does not measure clearances between parts, so verify this yourself.
 - FDM: overhangs and bridges are printable or the user knows supports are needed (`check` overhangs lists every region).
 - Resin: the user knows where islands need supports, and hollow parts have drain and vent holes of at least `drainHole` mm (`check` islands and bodies).
 - Checkpointed, so files map to a version.

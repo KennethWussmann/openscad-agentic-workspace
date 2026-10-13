@@ -14,9 +14,12 @@ Projects
                                           Render all parts to preview/*.3mf (through the dev server when running),
                                           then preview/sheet.png (2x2: iso | front / right | top)
   snapshot <project> [--view iso|front|back|left|right|top|bottom|iso-back] [--section x=10[:above]]
-           [--focus x,y,z[:radius]] [--part a,b] [--size 900] [--out name.png]
+           [--focus x,y,z[:radius]] [--part a,b] [-D name=value ...] [--size 900] [--out name.png]
                                           Extra PNG view or cross-section into preview/. --focus clips the model
-                                          to a cube around the point (radius 5 mm) so the view zooms in on it
+                                          to a cube around the point (radius 5 mm) so the view zooms in on it.
+                                          -D renders the parts with these parameter values into a throwaway model
+                                          for this image only (e.g. -D part=assembly); preview/, check and export
+                                          are untouched
   params <project>                        Customizer parameters with values, ranges and options
   printer [project]                       Active printer profile (process, bed, nozzle, tolerances) and all printers
   check <project> [--part a,b] [--all]    Printability against the active printer: manifold, bed fit, thin walls,

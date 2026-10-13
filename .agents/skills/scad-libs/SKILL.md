@@ -10,14 +10,14 @@ OpenSCAD has no package manager. It resolves `use <x/y.scad>` and `include <x/y.
 1. `workspace/_libs/` - local libraries you write and share between projects.
 2. Third-party git libraries declared under `libraries:` in `config.yaml` (root) or a project's `config.yaml`, checked out per pinned ref into `workspace/_vendor/<Name>@<ref>/<Name>/`.
 
-`pnpm scad lib list [--project p]` shows both, with install status.
+`pnpm -s scad lib list [--project p]` shows both, with install status.
 
 ## Local libraries (`workspace/_libs`)
 
 Create one when a module is needed by a second project, or when the user asks for reusable parts (fasteners, enclosure helpers, a house style):
 
 ```bash
-pnpm scad lib new fasteners --description "Metric screw holes, nut traps, heat-set insert bosses"
+pnpm -s scad lib new fasteners --description "Metric screw holes, nut traps, heat-set insert bosses"
 ```
 
 This creates `workspace/_libs/fasteners/{fasteners.scad, README.md, examples/demo.scad}`. Projects use it with `use <fasteners/fasteners.scad>`.
@@ -28,7 +28,7 @@ Conventions:
 - Prefix names with the library to avoid clashes (`fasteners_screw_hole`, `fasteners_m3`).
 - Keep `README.md` current: one table row per public module or function with its purpose and key arguments. Read it before using a library instead of re-reading all code.
 - Split large libraries into several files (`fasteners/screws.scad`, `fasteners/inserts.scad`) and an index file that `include`s them.
-- Changing a library changes every project that uses it: the dev server re-renders dependent projects automatically. Keep signatures backwards compatible or update all users (`grep -r "use <fasteners" workspace/*/src`). Checkpoints store a copy of the used library files; `pnpm scad restore ... --with-libs` puts them back.
+- Changing a library changes every project that uses it: the dev server re-renders dependent projects automatically. Keep signatures backwards compatible or update all users (`grep -r "use <fasteners" workspace/*/src`). Checkpoints store a copy of the used library files; `pnpm -s scad restore ... --with-libs` puts them back.
 - To try a library in isolation, create a scratch project that uses it, rather than putting test geometry into the library.
 
 ## Third-party libraries
@@ -36,11 +36,11 @@ Conventions:
 Declared, pinned and installed on demand. Nothing is hardcoded in the tooling; you decide per project what is worth it and the user's config records it.
 
 ```bash
-pnpm scad lib add BOSL2 --git https://github.com/BelfrySCAD/BOSL2.git              # root config, pinned to current commit
-pnpm scad lib add BOSL2 --git https://github.com/BelfrySCAD/BOSL2.git --project gearbox --ref <tag-or-commit>
-pnpm scad lib remove BOSL2 [--project p]
-pnpm scad lib sync           # install anything missing (render does this automatically)
-pnpm scad lib prune          # delete checkouts no config refers to anymore
+pnpm -s scad lib add BOSL2 --git https://github.com/BelfrySCAD/BOSL2.git              # root config, pinned to current commit
+pnpm -s scad lib add BOSL2 --git https://github.com/BelfrySCAD/BOSL2.git --project gearbox --ref <tag-or-commit>
+pnpm -s scad lib remove BOSL2 [--project p]
+pnpm -s scad lib sync           # install anything missing (render does this automatically)
+pnpm -s scad lib prune          # delete checkouts no config refers to anymore
 ```
 
 - The name is the folder used in includes (`BOSL2` for `include <BOSL2/std.scad>`), so it must match the library's expected folder name.

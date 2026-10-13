@@ -40,9 +40,9 @@ board_t = 18; // [10:0.5:40]
 wall = 2.4; // [1.2:0.2:5]
 
 /* [Print] */
-// Gap per side for sliding fits, default is tolerances.sliding from `pnpm scad printer`
+// Gap per side for sliding fits, default is tolerances.sliding from `pnpm -s scad printer`
 clearance = 0.3; // [0:0.05:1]
-part = "assembly"; // [assembly, clip, cover]
+part = "clip"; // [clip, cover, assembly]
 
 /* [Quality] */
 $fa = 4;
@@ -59,8 +59,12 @@ echo(body_w = body_w);
 main();
 
 module main() {
-  if (part == "assembly" || part == "clip") clip();
-  if (part == "assembly" || part == "cover") translate([0, 0, board_t + 5]) cover();
+  if (part == "clip") clip();
+  if (part == "cover") translate([body_w + 10, 0, 0]) cover();
+  if (part == "assembly") {
+    clip();
+    translate([0, 0, board_t + 5]) mirror([0, 0, 1]) cover();
+  }
 }
 
 module clip() { ... }
@@ -69,7 +73,7 @@ module cover() { ... }
 
 Rules behind it:
 
-- Customizer parameters are top-level assignments with literal values placed before the first `module` or `function` definition. They show up in the viewer's parameter panel and in `pnpm scad params`. Anything after the first module definition, any computed expression and everything under `/* [Hidden] */` is not a parameter.
+- Customizer parameters are top-level assignments with literal values placed before the first `module` or `function` definition. They show up in the viewer's parameter panel and in `pnpm -s scad params`. Anything after the first module definition, any computed expression and everything under `/* [Hidden] */` is not a parameter.
 - Group parameters with `/* [Group] */`. Put a one-line `// caption` directly above each parameter; it becomes the label in the viewer. Add ranges `// [min:step:max]` or option lists `// [a, b, c]` so the user can tweak safely.
 - Derived values live in `/* [Hidden] */`, computed from parameters. Never repeat a magic number; if a number appears twice, it is a parameter or a derived value.
 - Name with units in mind and be explicit: `wall`, `hole_d`, `screw_head_d`, `lid_h`, `fillet_r`. `_d` diameter, `_r` radius, `_h` height, `_t` thickness, `_w` width, `_l` length.
@@ -78,9 +82,17 @@ Rules behind it:
 - Never assign a variable twice in the same scope; OpenSCAD keeps the last value for the whole scope and warns.
 - Prefer `use <file.scad>` for module libraries (imports modules and functions only). `include <file.scad>` also runs the file's top-level code and copies its variables; use it only for shared dimension files or libraries that require it (BOSL2).
 
+## Design the way you print
+
+The model's coordinates are its print orientation. What the viewer shows, what `check` analyses and what lands in `out/` is the part lying on the bed exactly as it will print. There is no separate viewing orientation.
+
+- Pick the orientation before the first line of geometry (scad skill, step 1) and build every module in it. Do not model upright and flip the result at the end with a `print_layout` switch: the overhang and bridge findings of `check` then describe a different object than the one you are thinking about, and the rotations cost more reasoning than they save.
+- Name faces after the print orientation in comments and the brief ("bed face", "top"), and describe the use orientation only where it matters ("hangs with the bed face against the wall").
+- The only view that is not the print layout is how several parts fit together. Give the entry file a `part = "assembly"` option that places the parts in their use position, and look at it with `pnpm -s scad snapshot <id> --part <any> -D part=assembly`. It never becomes a part in `config.yaml`, so it is never checked or exported.
+
 ## Geometry habits
 
-- Units are millimetres, Z is up, the part rests on z = 0 in its print orientation unless the brief says otherwise.
+- Units are millimetres, Z is up, the part rests on z = 0 in its print orientation (see "Design the way you print").
 - Overshoot cuts by `eps` so differences never leave zero-thickness skins: `translate([0, 0, -eps]) cylinder(d = hole_d, h = t + 2 * eps);`
 - Avoid coincident faces in unions as well; overlap by `eps`.
 - Center where it makes the math simpler, and say so in a comment at the module.
@@ -90,7 +102,7 @@ Rules behind it:
 
 ## Printability defaults
 
-Design for the active printer profile, never for assumed numbers. Run `pnpm scad printer <id>` before writing geometry that depends on the process and again when the project's `print` settings change. It prints the process (`fdm` or `resin`), bed, nozzle or pixel size, layer height, wall limits and tolerances that `pnpm scad check` and the viewer use.
+Design for the active printer profile, never for assumed numbers. Run `pnpm -s scad printer <id>` before writing geometry that depends on the process and again when the project's `print` settings change. It prints the process (`fdm` or `resin`), bed, nozzle or pixel size, layer height, wall limits and tolerances that `pnpm -s scad check` and the viewer use.
 
 The profile comes from `config.yaml`:
 - `printers.<name>` describes each machine.
@@ -99,7 +111,7 @@ The profile comes from `config.yaml`:
 - When the user changes the nozzle or printer, change `print` in the project config, not the printer definition, then re-check the parameters below.
 
 Carry the profile into the model so it stays tweakable:
-- Put tolerances into the `/* [Print] */` group as parameters whose defaults are the profile values: `clearance` (`sliding`), `press_fit` (`press`), `loose_fit` (`loose`), `hole_extra` (`hole`). Copy the numbers `pnpm scad printer <id>` prints for this project; never take them from examples in this skill, they differ per printer and process. The profile's `tolerances` are per side for mating parts (`press`, `sliding`, `loose`); `hole` is added to the diameter of holes for screws and pins.
+- Put tolerances into the `/* [Print] */` group as parameters whose defaults are the profile values: `clearance` (`sliding`), `press_fit` (`press`), `loose_fit` (`loose`), `hole_extra` (`hole`). Copy the numbers `pnpm -s scad printer <id>` prints for this project; never take them from examples in this skill, they differ per printer and process. The profile's `tolerances` are per side for mating parts (`press`, `sliding`, `loose`); `hole` is added to the diameter of holes for screws and pins.
 - Derive minimum thicknesses from profile values captured as parameters (`nozzle = 0.4;`, `wall = 3 * nozzle;`) instead of literals, and guard them with `assert`.
 - Note the profile you designed for (printer, process, nozzle or pixel, layer height) under Decisions in `brief.md`. If the profile changes later, update these parameters and say so.
 
@@ -126,7 +138,7 @@ Both:
 
 ## Fixing check findings
 
-What `pnpm scad check` reports and the usual fix. Confirm the location with a section snapshot through the reported centre before changing code, focused on it: `pnpm scad snapshot <id> --section y=<cy> --view front --focus <cx>,<cy>,<cz>`. Grouped findings (`8 x 0.59 mm`) usually share one cause, such as one module or one text size, so fix that once.
+What `pnpm -s scad check` reports and the usual fix. Confirm the location with a section snapshot through the reported centre before changing code, focused on it: `pnpm -s scad snapshot <id> --section y=<cy> --view front --focus <cx>,<cy>,<cz>`. Grouped findings (`8 x 0.59 mm`) usually share one cause, such as one module or one text size, so fix that once.
 
 | Finding | Usual cause | Fix |
 | --- | --- | --- |
@@ -144,7 +156,7 @@ What `pnpm scad check` reports and the usual fix. Confirm the location with a se
 
 ## Multi-part projects
 
-Declare parts in the project `config.yaml`; each part is rendered to its own model and shown together as an assembly in the viewer:
+Declare parts in the project `config.yaml`; each part is rendered to its own model and all of them show together in the viewer, laid out on the bed as they print:
 
 ```yaml
 name: Sensor Box
@@ -159,8 +171,8 @@ parts:
 ```
 
 - A single entry file with a `part` selector parameter is the usual pattern (see the example above). Parameters set through a part's `defines` are hidden from the parameter panel.
-- Place parts in their assembled position in the assembly preview so the user can check the fit (sections are great for this), but keep each part's own geometry printable. If print orientation differs from assembly orientation, add a `print_layout` boolean parameter or a separate `-print` part.
-- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm scad export` (used for 2D outlines and merged 3MFs, see scad-export).
+- Each part is modelled in its own print orientation. Translate parts next to each other in `main()` so they do not overlap on the bed, and keep the assembled position for the `assembly` option only ("Design the way you print"). Check the fit with `pnpm -s scad snapshot <id> --part <any> -D part=assembly --section ...`.
+- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm -s scad export` (used for 2D outlines and merged 3MFs, see scad-export).
 - Parts that belong together in an exact position (second-color inlays and text, multi-material inserts) also need a merged 3MF, because slicers lose the alignment when the user imports separate files. Plan for it from the start: keep body and inlay as separate modules with their own `color()`, and follow "Merged multi-object 3MF" in scad-export.
 - Separate files per part (`src/base.scad`, `src/lid.scad`) sharing `src/dims.scad` via `include` also works; pick one style per project.
 

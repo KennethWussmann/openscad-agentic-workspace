@@ -1,6 +1,6 @@
-import type { AnnotationEdge } from '@scad/protocol'
+import type { AnnotationEdge, Vec3 } from '@scad/protocol'
 import { cosDeg, dot, len, round, roundVec, sub, unit } from '../mesh/math.ts'
-import { edgeKey, normal, point, type Topology, triEdges } from '../mesh/topology.ts'
+import { EDGE_KEY, edgeKey, normal, point, type Topology, triEdges } from '../mesh/topology.ts'
 import { COS_FEATURE } from './surface.ts'
 
 const COLLINEAR_ANGLE = 0.5
@@ -59,4 +59,14 @@ export const describeEdge = (topo: Topology, a: number, b: number): AnnotationEd
   const pa = point(topo, start)
   const pb = point(topo, end)
   return { a: roundVec(pa), b: roundVec(pb), length: round(len(sub(pb, pa))), angle: round(angle, 1), convex }
+}
+
+export const featureEdges = (topo: Topology): [Vec3, Vec3][] => {
+  const out: [Vec3, Vec3][] = []
+  for (const key of topo.edges.keys()) {
+    const a = Math.floor(key / EDGE_KEY)
+    const b = key % EDGE_KEY
+    if (isFeature(topo, a, b)) out.push([point(topo, a), point(topo, b)])
+  }
+  return out
 }
