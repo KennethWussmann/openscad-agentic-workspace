@@ -1,14 +1,13 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { discoverOpenscad, resolvePaths, writeAnnotations } from '@scad/core'
+import { resolvePaths, writeAnnotations } from '@scad/core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 const base = path.resolve(import.meta.dirname, '../.test-tmp', `cli-${process.pid}`)
 const workspace = path.join(base, 'workspace')
 const config = path.join(base, 'config.yaml')
 const main = path.resolve(import.meta.dirname, 'main.ts')
-const hasOpenscad = (await discoverOpenscad({ configured: null })).openscad !== null
 
 const scad = (...args: string[]) => {
   const run = spawnSync(process.execPath, [main, ...args], {
@@ -144,7 +143,7 @@ it('shows pending annotations with geometry and snapshot path, then clears them'
   expect(scad('proposal', 'clip').stdout).toContain('No pending proposal.')
 })
 
-describe.skipIf(!hasOpenscad)('with OpenSCAD', () => {
+describe('with OpenSCAD', () => {
   it('renders, checks, checkpoints, lists versions and exports', () => {
     const render = json<{ status: string; sheet: string | null }>('render', 'clip')
     expect(render.code).toBe(0)
