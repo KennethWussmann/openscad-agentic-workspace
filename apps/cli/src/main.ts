@@ -34,6 +34,9 @@ const main = async () => {
       ref: { type: 'string' },
       project: { type: 'string' },
       open: { type: 'boolean' },
+      all: { type: 'boolean' },
+      'accept-fail': { type: 'boolean' },
+      focus: { type: 'string' },
     },
   })
   const [command, ...args] = positionals

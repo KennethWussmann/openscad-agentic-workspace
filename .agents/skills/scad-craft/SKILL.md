@@ -126,7 +126,7 @@ Both:
 
 ## Fixing check findings
 
-What `pnpm scad check` reports and the usual fix. Confirm the location with a section snapshot through the reported centre before changing code.
+What `pnpm scad check` reports and the usual fix. Confirm the location with a section snapshot through the reported centre before changing code, focused on it: `pnpm scad snapshot <id> --section y=<cy> --view front --focus <cx>,<cy>,<cz>`. Grouped findings (`8 x 0.59 mm`) usually share one cause, such as one module or one text size, so fix that once.
 
 | Finding | Usual cause | Fix |
 | --- | --- | --- |

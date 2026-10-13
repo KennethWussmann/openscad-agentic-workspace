@@ -96,11 +96,12 @@ Press `?` in the viewer for all keys.
 | `new <project>` | Create `workspace/<project>` with a parametric template |
 | `open [project]` / `serve` / `stop` | Viewer and background dev server |
 | `render <project>` | Render all parts, then the contact sheet |
-| `snapshot <project> --section x=10` | Extra views and cross-sections as PNG |
+| `snapshot <project> --section x=10 [--focus x,y,z]` | Extra views and cross-sections as PNG, optionally zoomed in on one point |
 | `params <project>` | Customizer parameters |
 | `printer [project]` | Active printer profile with tolerances, and all defined printers |
 | `check <project>` | Printability check against the active printer: manifold, bed fit, thin walls, floating bodies, overhangs (FDM) or islands and trapped resin (resin) |
 | `checkpoint <project> -m "..."` / `versions` / `restore <project> v003` | History |
+| `release <project> -m "..."` | Check, checkpoint and export in one step; stops on FAIL |
 | `proposal <project>` | Parameter values and 3D notes sent from the viewer |
 | `export <project>` | Write the configured formats to `out/` |
 | `lib new` / `lib add` / `lib sync` | Shared and third-party OpenSCAD libraries |
@@ -120,7 +121,7 @@ Every command accepts `--json`.
 | walls | all | thinnest 0.1 mm² patch of a region is under the nozzle (fdm) or `minFeature` (resin) | regions thinner than `minWall` (fdm default 2 × nozzle) |
 | bodies | all | never | bodies floating above the bed, bodies smaller than `minWall`; for resin also enclosed voids, which trap resin and need drain holes of at least `drainHole` |
 
-Regions come with area, centre, bounding box and their worst value. Regions smaller than `check.minRegionArea` are dropped. Islands come with their position and height above the bed.
+Regions come with area, centre, bounding box and their worst value. Regions smaller than `check.minRegionArea` are dropped. Islands come with their position and height above the bed. The text output groups regions with the same worst value, area and size into one line and lists the first five groups; `--all` lists every group.
 
 Islands are local minima of the surface: vertices, or flat patches of vertices, with no lower neighbour, above the bed, and with the surrounding faces pointing down. That excludes the floors of enclosed voids and holes. A bridge between two walls is not an island, because each of its layers connects to the walls.
 
@@ -129,7 +130,7 @@ Wall thickness is approximate. From each triangle's centroid, a ray is cast inwa
 - Wedges and knife edges count where their faces are close to opposite.
 - Gaps and clearances between bodies are not measured.
 
-`checkpoint`, `export` and `status` note when the check is missing, older than the render, or failed. Exports from the viewer check the exported 3MF files directly and store the result as `meshCheck` in `out/export.json`, without touching `preview/check.json`.
+`checkpoint`, `export` and `status` note when the check is missing, older than the render, or failed. `release` runs the check, then the checkpoint and the export, and stops before the checkpoint on FAIL unless `--accept-fail` is given. The dev server's file watcher skips its re-render when the CLI already rendered the same sources, so a check right after a save does not go stale. Exports from the viewer check the exported 3MF files directly and store the result as `meshCheck` in `out/export.json`, without touching `preview/check.json`.
 
 ## Configuration
 

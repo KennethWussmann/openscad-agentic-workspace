@@ -37,16 +37,37 @@ export type ViewContext = {
 
 const scadString = (p: string) => JSON.stringify(p.replace(/\\/g, '/'))
 
-export const wrapperSource = (models: string[], section: Section | null, bbox: BBox | null) => {
-  const imports = models.map((m) => `  import(${scadString(m)});`).join('\n')
-  if (!section) return `union() {\n${imports}\n}\n`
+export type Focus = {
+  center: Vec3
+  radius: number
+}
+
+export type WrapperOptions = {
+  section?: Section | null
+  bbox?: BBox | null
+  focus?: Focus | null
+}
+
+const indent = (src: string) => src.replace(/^/gm, '  ')
+
+const sectionSource = (body: string, section: Section, bbox: BBox | null) => {
   const extent = bbox ? Math.max(...bbox.size.map(Math.abs), 1) : 1000
   const big = Math.ceil(extent * 10 + 1000)
   const index = { x: 0, y: 1, z: 2 }[section.axis]
   const offset: Vec3 = [-big / 2, -big / 2, -big / 2]
   if (bbox) for (let i = 0; i < 3; i++) offset[i] = (bbox.min[i] + bbox.max[i]) / 2 - big / 2
   offset[index] = section.keep === 'below' ? section.at : section.at - big
-  return `difference() {\n  union() {\n${imports.replace(/^/gm, '  ')}\n  }\n  translate([${offset.join(', ')}]) cube([${big}, ${big}, ${big}]);\n}\n`
+  return `difference() {\n${indent(body)}\n  translate([${offset.join(', ')}]) cube([${big}, ${big}, ${big}]);\n}`
+}
+
+const focusSource = (body: string, { center, radius }: Focus) =>
+  `intersection() {\n${indent(body)}\n  translate([${center.map((c) => c - radius).join(', ')}]) cube(${2 * radius});\n}`
+
+export const wrapperSource = (models: string[], { section = null, bbox = null, focus = null }: WrapperOptions = {}) => {
+  let body = `union() {\n${models.map((m) => `  import(${scadString(m)});`).join('\n')}\n}`
+  if (section) body = sectionSource(body, section, bbox)
+  if (focus) body = focusSource(body, focus)
+  return `${body}\n`
 }
 
 export const sectionView = (section: Section): Vec3 => {
@@ -64,6 +85,7 @@ export type RenderViewOptions = {
   out: string
   section?: Section | null
   bbox?: BBox | null
+  focus?: Focus | null
   axes?: boolean
 }
 
@@ -72,7 +94,7 @@ export const renderView = async (ctx: ViewContext, opts: RenderViewOptions): Pro
   if (missing.length) return [{ level: 'error', message: `Missing model(s): ${missing.join(', ')}. Render first.` }]
   mkdirSync(ctx.temp, { recursive: true })
   const wrapper = path.join(ctx.temp, `view-${randomBytes(4).toString('hex')}.scad`)
-  writeFileSync(wrapper, wrapperSource(opts.models, opts.section ?? null, opts.bbox ?? null))
+  writeFileSync(wrapper, wrapperSource(opts.models, opts))
   mkdirSync(path.dirname(opts.out), { recursive: true })
   try {
     const run = await runOpenscad({
@@ -86,7 +108,7 @@ export const renderView = async (ctx: ViewContext, opts: RenderViewOptions): Pro
         '--projection=o',
         `--camera=0,0,0,${opts.rotation.join(',')},100`,
         `--colorscheme=${ctx.settings.render.colorscheme}`,
-        ...(opts.section ? ['--render=1'] : []),
+        ...(opts.section || opts.focus ? ['--render=1'] : []),
         ...(opts.axes ? ['--view=axes,scales'] : []),
         wrapper,
       ],

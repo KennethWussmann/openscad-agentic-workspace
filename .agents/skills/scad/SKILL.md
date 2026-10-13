@@ -27,7 +27,7 @@ All commands run from the repository root. `pnpm scad` without arguments prints 
 
 ### 1. Understand and propose
 
-Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan a merged 3MF next to the separate parts (scad-export, "Merged multi-object 3MF"). Infer the rest and state your assumptions.
+Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. Do not read the root `config.yaml` for this; `printer` shows the resolved profile, and the file is long and mostly comments. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan a merged 3MF next to the separate parts (scad-export, "Merged multi-object 3MF"). Infer the rest and state your assumptions.
 
 New project: `pnpm scad new <id> [--name "Name"] [--description "..."]` (id is lowercase-dashed). `--from <other-project>` starts from a copy. Fill `workspace/<id>/brief.md` (requirements, key dimensions, parts, decisions) and give the user a short summary of the plan.
 
@@ -65,9 +65,12 @@ For details and insides:
 pnpm scad snapshot <id> --view back|left|bottom|iso-back|...    # other angles
 pnpm scad snapshot <id> --section y=12                         # cut at y=12, keep y<=12
 pnpm scad snapshot <id> --section z=3:above --part lid         # keep the part above z=3
+pnpm scad snapshot <id> --section y=40 --view front --focus 20,40,1.5:6   # zoom in on one feature
 ```
 
 Snapshots land in `preview/`. Check wall thickness, hidden cavities, hole alignment and overlaps in sections.
+
+Every snapshot frames the whole part, so a section through a flat or long part shows the cut as a thin strip. When you need to see one feature (a hole profile, a lip, a region `check` reported), add `--focus x,y,z[:radius]`: it clips the model to a cube around that point (radius 5 mm by default) and the view zooms in on it. Combine it with `--section` through the same point and a straight view (`front` for a y cut, `right` for x, `top` for z). Decide what the snapshot has to answer before taking it; if an image does not answer it, focus closer instead of trying more planes.
 
 Verify numbers, not just pictures: compare the printed bounding boxes with the requirements; use `echo()` or `assert()` in the model for derived values (scad-craft).
 
@@ -90,6 +93,10 @@ It analyses the rendered meshes in `preview/` (it renders first if the sources c
 - **walls:** thickness measured inwards from every triangle. WARN under `minWall` (fdm default 2 x nozzle), FAIL when the thinnest 0.1 mm2 patch of a region is under the nozzle (fdm) or under `minFeature` (resin). This is approximate: one ray per triangle, only walls with roughly opposite faces count, and gaps between parts are not measured. Confirm findings with a section snapshot through the reported centre.
 - **bodies:** solids, enclosed voids, bodies floating above the bed, and bodies smaller than `minWall` (WARN). For resin, enclosed voids WARN too because they trap resin; add drain holes of at least `drainHole` mm.
 
+Overhang and wall regions with the same thickness or angle, area and size are grouped into one line (`8 x 0.59 mm, 2.01 mm2 each, size ..., around (..), (..)`), typically repeated features such as engraved digits or a row of ribs. The first 5 groups are listed; `--all` lists every group. Use `--all` instead of parsing `check.json` by hand.
+
+`preview/check.json` (also printed by `--json`) has this shape: `{ project, status, checkedAt, render, profile, parts: [...] }`. Each part has `id`, `status`, `triangles`, `bbox` and one object per check: `manifold` (`openEdges`, `nonManifoldEdges`, `flippedEdges`, `degenerate`, `inverted`, `samples`, `foldedEdges`, `folds`), `bed` (`size`, `bed`, `fits`, `fitsRotated`, `minZ`), `overhangs` and `walls` (`area`, `worst`, `regions`), `islands` (`count`, `islands`, resin only), `bodies` (`bodies`, `voids`, `floating`, `small`). Every check has a `status`. A region is `{ area, bbox: { min, max, size }, center, worst, triangles }`; `worst` is mm for walls and degrees for overhangs. `overhangs` is `null` for resin, `islands` is `null` for fdm.
+
 Exit code 1 means at least one FAIL. How to handle the result:
 
 1. Read `## Decisions` in `brief.md` first. A finding the user already accepted there (same check, same feature) is not raised again; mention it only if it got worse.
@@ -103,17 +110,20 @@ In the viewer, the user can toggle an overhang heatmap (H, islands for resin) an
 
 ### 5. Finish the request
 
-When the user's request is done, the render is clean and `pnpm scad check <id>` has no unexplained FAIL, checkpoint it (scad-versions):
+When the user's request is done and the render is clean, update `brief.md` first (one line per request under `## Changelog`, decisions, changed dimensions), then finish with one command:
 
 ```bash
-pnpm scad checkpoint <id> -m "Short description of what changed"
+pnpm scad release <id> -m "Short description of what changed"   # check, checkpoint, export
+pnpm scad release <id> -m "..." --accept-fail                    # only for FAILs recorded under Decisions
 ```
 
-Add one line per request to `## Changelog` in `brief.md`. Report briefly: what changed, key dimensions, the version id, anything the user should check in the viewer (suggest using the section tool or measuring a specific distance).
+`release` checks (rendering first if the sources changed), stops on FAIL, otherwise checkpoints and exports the configured formats, all against the same render. Use it whenever the user wants files or the project already has exports in `out/`. When no files are wanted yet, run `pnpm scad check <id>` and `pnpm scad checkpoint <id> -m "..."` (scad-versions). Do not run `checkpoint` and `export` before `check`: the check would be missing or stale for that version.
+
+Keep the reply short, a few lines: what changed, key dimensions, the version id, the files, open WARNs or decisions, and anything the user should check in the viewer (suggest the section tool or measuring a specific distance). Explain background, alternatives or slicer advice only when the user asks for it.
 
 ### 6. Deliver
 
-When asked for files, follow scad-export (`pnpm scad export <id>`).
+When asked for files, follow scad-export (`pnpm scad release <id> -m "..."`, or `pnpm scad export <id>` when the current state is already checkpointed).
 
 ## The viewer, for reference when talking to the user
 

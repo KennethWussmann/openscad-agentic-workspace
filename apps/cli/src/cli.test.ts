@@ -173,6 +173,10 @@ describe('with OpenSCAD', () => {
     expect(exported.data.files.every((f) => f.ok)).toBe(true)
     const snap = json<{ ok: boolean }>('snapshot', 'clip', '--section', 'x=10')
     expect(snap.data.ok).toBe(true)
+    const focused = json<{ ok: boolean; file: string }>('snapshot', 'clip', '--section', 'x=10', '--focus', '10,5,2:3')
+    expect(focused.data.ok).toBe(true)
+    expect(focused.data.file).toMatch(/snapshot-auto-x10-below-at10_5_2\.png$/)
+    expect(scad('snapshot', 'clip', '--focus', '10,5').code).toBe(2)
   })
 
   it('fails the check for thin walls and hints at it on checkpoint and export', () => {
@@ -185,6 +189,37 @@ describe('with OpenSCAD', () => {
     writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), 'cube([30, 30, 2]);\n')
     expect(json<{ status: string }>('render', 'clip', '--no-sheet').data.status).toBe('ok')
     expect(scad('export', 'clip', '--formats', 'stl').stdout).toContain('the last check is older than the render')
+  })
+
+  it('groups repeated findings and lists every group with --all', () => {
+    const fins = Array.from(
+      { length: 8 },
+      (_, i) => `translate([${i * 10 + 2}, ${i % 2 ? 2 : 10}, 2]) cube([0.3, ${4 + i}, 3]);`,
+    )
+    writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), `cube([80, 20, 2]);\n${fins.join('\n')}\n`)
+    const check = scad('check', 'clip')
+    expect(check.code).toBe(1)
+    expect(check.stdout).toMatch(/- 2 x 0\.3 mm, [\d.]+ mm2 each, size [\d. x]+, around \(/)
+    expect(check.stdout).toMatch(/\.\.\. \d+ more region\(s\) in 3 group\(s\), --all lists them/)
+    const all = scad('check', 'clip', '--all')
+    expect(all.stdout).not.toContain('--all lists them')
+    expect(all.stdout.match(/- 2 x 0\.3 mm/g)).toHaveLength(8)
+  })
+
+  it('releases only after a passing check: check, checkpoint and export in one step', () => {
+    const before = json<{ versions: unknown[] }>('versions', 'clip').data.versions.length
+    const failed = scad('release', 'clip', '-m', 'Fins')
+    expect(failed.code).toBe(1)
+    expect(failed.stdout).toContain('Not checkpointed or exported because the check failed.')
+    expect(json<{ versions: unknown[] }>('versions', 'clip').data.versions).toHaveLength(before)
+    writeFileSync(path.join(workspace, 'clip', 'src', 'main.scad'), 'cube([30, 30, 3]);\n')
+    const released = scad('release', 'clip', '-m', 'Thicker', '--formats', 'stl')
+    expect(released.code).toBe(0)
+    expect(released.stdout).toContain('PASS  check  clip')
+    expect(released.stdout).toMatch(/Checkpointed clip v\d{3}: Thicker/)
+    expect(released.stdout).toMatch(/ok {3}main stl/)
+    expect(released.stdout).not.toContain('note:')
+    expect(scad('status', 'clip').stdout).toContain('check: pass')
   })
 
   it('checks islands and trapped resin instead of overhangs for a resin printer', () => {

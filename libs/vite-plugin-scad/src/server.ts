@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs'
-import { type Paths, projectExists, renderProject, resolveOpenscad } from '@scad/core'
+import { isRenderCurrent, type Paths, projectExists, readRender, renderProject, resolveOpenscad } from '@scad/core'
 import {
   API,
   type ChangedEvent,
@@ -42,7 +42,11 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
   const tweaks = new Map<string, Record<string, DefineValue>>()
   const send = <T>(event: string, data: T) => server.ws.send({ type: 'custom', event, data })
 
-  const coordinator = createCoordinator(async (project, kind, overrides) => {
+  const coordinator = createCoordinator(async (project, kind, overrides, force) => {
+    if (!force && kind === 'preview') {
+      const current = readRender(paths, project)
+      if (current && isRenderCurrent(paths, current)) return current
+    }
     send<RenderStartEvent>(EVENTS.renderStart, { project, kind })
     let result: RenderResult
     try {
@@ -55,8 +59,8 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
     return result
   })
 
-  const request = (project: string, kind: RenderKind) =>
-    coordinator.request(project, kind, kind === 'tweak' ? (tweaks.get(project) ?? {}) : {})
+  const request = (project: string, kind: RenderKind, force = true) =>
+    coordinator.request(project, kind, kind === 'tweak' ? (tweaks.get(project) ?? {}) : {}, force)
 
   const debounce = createDebouncer(debounceMs)
   const changed = (project: string) =>
@@ -64,7 +68,7 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
   const sourcesChanged = (project: string) =>
     debounce(`render:${project}`, () => {
       if (!projectExists(paths, project)) return
-      request(project, 'preview').catch(() => undefined)
+      request(project, 'preview', false).catch(() => undefined)
       if (tweaks.has(project)) request(project, 'tweak').catch(() => undefined)
     })
 
