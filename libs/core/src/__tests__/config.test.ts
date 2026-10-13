@@ -10,7 +10,7 @@ import {
   printProfile,
   setYamlValue,
   writeOpenscadPath,
-} from '../config.ts'
+} from '../index.ts'
 import { tempPaths, write } from './helpers.ts'
 
 describe('deepMerge', () => {

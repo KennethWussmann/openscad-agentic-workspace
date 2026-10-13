@@ -2,7 +2,8 @@ import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
-import { API, APP_ID, type Health, type Paths, PROJECT_PARAM } from '@scad/core'
+import type { Paths } from '@scad/core'
+import { APP_ID, createApiClient, type Health, PROJECT_PARAM } from '@scad/protocol'
 
 export type ServerInfo = { port: number; pid: number; started: boolean }
 
@@ -16,15 +17,12 @@ const readState = (paths: Paths): { port: number } | null => {
   }
 }
 
-export const health = async (port: number): Promise<Health | null> => {
-  try {
-    const res = await fetch(`http://localhost:${port}${API}/health`, { signal: AbortSignal.timeout(800) })
-    if (!res.ok) return null
-    return (await res.json()) as Health
-  } catch {
-    return null
-  }
-}
+export const viewerApi = (port: number) => createApiClient(`http://localhost:${port}`)
+
+export const health = (port: number): Promise<Health | null> =>
+  viewerApi(port)
+    .health(AbortSignal.timeout(800))
+    .catch(() => null)
 
 const ours = (paths: Paths, h: Health | null) =>
   h !== null && h.app === APP_ID && path.resolve(h.workspace) === path.resolve(paths.workspace)
@@ -91,17 +89,6 @@ export const stopServer = async (paths: Paths, basePort: number) => {
 
 export const viewerUrl = (port: number, project?: string) =>
   `http://localhost:${port}/${project ? `?${PROJECT_PARAM}=${encodeURIComponent(project)}` : ''}`
-
-export const api = async <T>(port: number, route: string, init?: { method?: string; body?: unknown }): Promise<T> => {
-  const res = await fetch(`http://localhost:${port}${API}${route}`, {
-    method: init?.method ?? 'GET',
-    headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
-    body: init?.body ? JSON.stringify(init.body) : undefined,
-  })
-  const data = (await res.json()) as T & { error?: string }
-  if (!res.ok) throw new Error(data.error ?? `${route} failed with ${res.status}`)
-  return data
-}
 
 export const openBrowser = (url: string) => {
   const [cmd, args] =

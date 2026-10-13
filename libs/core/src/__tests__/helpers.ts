@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { type Paths, resolvePaths } from '../paths.ts'
+import { type Paths, resolvePaths } from '../index.ts'
 
 export const tempPaths = (name: string): Paths => {
   const base = path.resolve(import.meta.dirname, '../../.test-tmp', `${name}-${process.pid}`)

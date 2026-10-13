@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { API, APP_ID, createProject, discoverOpenscad, type ExportResult, resolvePaths } from '@scad/core'
+import { createProject, discoverOpenscad, resolvePaths } from '@scad/core'
+import { API, APP_ID, type ExportResult } from '@scad/protocol'
 import { createServer, type ViteDevServer } from 'vite'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { scadWorkspace } from './index.ts'

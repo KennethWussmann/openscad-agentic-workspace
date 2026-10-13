@@ -1,4 +1,4 @@
-import type { DefineValue, RenderResult } from '@scad/core/protocol'
+import type { DefineValue, RenderResult } from '@scad/protocol'
 import { describe, expect, it } from 'vitest'
 import { createCoordinator } from './coordinator.ts'
 

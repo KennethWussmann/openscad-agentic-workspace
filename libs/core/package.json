@@ -4,16 +4,15 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./check": "./src/check.ts",
-    "./protocol": "./src/protocol.ts",
-    "./surface": "./src/surface.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@scad/geometry": "workspace:*",
+    "@scad/protocol": "workspace:*",
     "pngjs": "^7.0.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.6"

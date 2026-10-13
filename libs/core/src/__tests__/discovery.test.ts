@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { type DiscoveryHost, discoverOpenscad } from '../discovery.ts'
+import { type DiscoveryHost, discoverOpenscad } from '../index.ts'
 
 const host = (over: Partial<DiscoveryHost> & { files?: string[]; working?: string[] }): DiscoveryHost => ({
   platform: over.platform ?? 'linux',

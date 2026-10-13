@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { fileName } from '../exporter.ts'
-import { formatDefine, parseDepsFile, parseDiagnostics } from '../openscad.ts'
-import { parseDefineInput, parseParamExport } from '../params.ts'
-import { wrapperSource } from '../views.ts'
+import {
+  fileName,
+  formatDefine,
+  parseDefineInput,
+  parseDepsFile,
+  parseDiagnostics,
+  parseParamExport,
+  wrapperSource,
+} from '../index.ts'
 
 describe('parseDiagnostics', () => {
   it('extracts levels, files and lines', () => {

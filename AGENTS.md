@@ -19,10 +19,12 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 
 ## Repository layout
 
-- `apps/cli` (`pnpm scad`): deterministic commands for the agent. Run `pnpm scad` without arguments for the command reference; add `--json` for machine-readable output.
-- `apps/web`: React + three.js viewer, served by Vite.
-- `libs/core`: config, OpenSCAD discovery, rendering, versions, libraries, exports, printability check (`check.ts` runs in Node and in the viewer).
-- `libs/vite-plugin-scad`: dev-server API, file watcher that re-renders on save, live push to the viewer.
+- `apps/cli` (`pnpm scad`): deterministic commands for the agent. Run `pnpm scad` without arguments for the command reference; add `--json` for machine-readable output. One file per command group in `src/commands/`, text output in `src/format/`.
+- `apps/web`: React + three.js viewer, served by Vite. `src/components/` reusable UI pieces, `src/features/` the panels and overlays, `src/viewer/` the three.js scene, `src/store/` the zustand store.
+- `libs/protocol` (`@scad/protocol`): types, constants, events and the typed HTTP client shared by every package. Runs in Node and the browser.
+- `libs/geometry` (`@scad/geometry`): mesh topology, surface analysis and the printability analysis (manifold, overhangs, islands, walls, bodies). Runs in Node and in the viewer.
+- `libs/core` (`@scad/core`): Node only. Config, OpenSCAD discovery and runs, rendering, views, versions, proposals, libraries, exports, `check` on rendered files.
+- `libs/vite-plugin-scad`: dev-server API routes, file watcher that re-renders on save, live push to the viewer.
 - `workspace/` (gitignored): all models. `workspace/<project>/`, shared libraries in `workspace/_libs/`, third-party checkouts in `workspace/_vendor/`.
 - `config.yaml` (gitignored, created from `config.example.yaml`): workspace settings; each project's `config.yaml` overrides them.
 
@@ -34,3 +36,4 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 - Design for the active printer profile. `pnpm scad printer <project>` shows the process (fdm or resin), bed, nozzle or pixel size, layer height, wall limits and tolerances. Take clearances and minimum sizes from it, never from assumed defaults. Machines are defined under `printers` in `config.yaml`. `print` selects the printer, nozzle and layer height, and a project overrides it in its own `config.yaml`.
 - Do not change the viewer, CLI or libraries to make a model work. If the tooling lacks something, tell the user.
 - Development on the tooling itself: `pnpm typecheck`, `pnpm test`, `pnpm lint` (Biome) from the root. OpenSCAD-dependent tests skip themselves when OpenSCAD is not installed.
+- Keep `.ts`/`.tsx` files under 500 lines; Biome fails the lint above that. Split by responsibility instead of growing a file. Code the browser needs goes into `@scad/protocol` or `@scad/geometry`, never into `@scad/core`, so the viewer never depends on Node modules.

@@ -207,10 +207,14 @@ workspace/                    gitignored
 ## Development
 
 The repo is a pnpm workspace orchestrated by Turborepo and linted with Biome:
-- `apps/cli`: the `pnpm scad` CLI
-- `apps/web`: the React + three.js viewer
-- `libs/core`: config, discovery, rendering, versions, libraries, exports, printability check
+- `apps/cli`: the `pnpm scad` CLI, one module per command group
+- `apps/web`: the React + three.js viewer (reusable components, feature panels, three.js scene, store)
+- `libs/protocol`: shared types, constants, events and the typed HTTP client (Node and browser)
+- `libs/geometry`: mesh topology, surface and printability analysis (Node and browser)
+- `libs/core`: Node-only config, discovery, rendering, versions, libraries, exports, printability check of rendered files
 - `libs/vite-plugin-scad`: dev server API, file watcher, live events
+
+Dependencies point one way: `protocol` <- `geometry` <- `core` <- `cli` / `vite-plugin-scad`. The viewer only uses `protocol` and `geometry`. Biome limits `.ts`/`.tsx` files to 500 lines.
 
 ```bash
 pnpm dev         # viewer only

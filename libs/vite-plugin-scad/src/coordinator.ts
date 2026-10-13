@@ -1,6 +1,4 @@
-import type { DefineValue, RenderResult } from '@scad/core/protocol'
-
-export type RenderKind = 'preview' | 'tweak'
+import type { DefineValue, RenderKind, RenderResult } from '@scad/protocol'
 
 export type RenderRunner = (
   project: string,

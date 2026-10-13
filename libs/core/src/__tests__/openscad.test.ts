@@ -1,15 +1,21 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { checkProject, checkState, readCheck } from '../checker.ts'
-import { loadProjectConfig } from '../config.ts'
-import { discoverOpenscad, type Openscad } from '../discovery.ts'
-import { exportProject } from '../exporter.ts'
-import { projectLayout } from '../paths.ts'
-import { createProject } from '../project.ts'
-import { readRender, renderProject } from '../render.ts'
-import { checkpoint } from '../versions.ts'
-import { renderSheet } from '../views.ts'
+import {
+  checkProject,
+  checkpoint,
+  checkState,
+  createProject,
+  discoverOpenscad,
+  exportProject,
+  loadProjectConfig,
+  type Openscad,
+  projectLayout,
+  readCheck,
+  readRender,
+  renderProject,
+  renderSheet,
+} from '../index.ts'
 import { tempPaths, write } from './helpers.ts'
 
 const found = await discoverOpenscad({ configured: null })

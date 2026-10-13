@@ -1,11 +1,19 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import type { RenderResult } from '@scad/protocol'
 import { describe, expect, it } from 'vitest'
-import { projectLayout } from '../paths.ts'
-import { createProject, listProjects, projectState } from '../project.ts'
-import type { RenderResult } from '../protocol.ts'
-import { sha1, writeJsonAtomic } from '../render.ts'
-import { checkpoint, isDirty, listVersions, restoreFiles } from '../versions.ts'
+import {
+  checkpoint,
+  createProject,
+  isDirty,
+  listProjects,
+  listVersions,
+  projectLayout,
+  projectState,
+  restoreFiles,
+  sha1,
+  writeJsonAtomic,
+} from '../index.ts'
 import { tempPaths, write } from './helpers.ts'
 
 const fakeRender = (paths: ReturnType<typeof tempPaths>, id: string, files: string[]) => {

@@ -1,16 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs'
+import type { Annotation, AnnotationInput } from '@scad/protocol'
 import { PNG } from 'pngjs'
 import { describe, expect, it } from 'vitest'
-import { projectLayout } from '../paths.ts'
-import { createProject, listProjects, projectState } from '../project.ts'
 import {
   clearAnnotations,
   clearProposals,
+  createProject,
+  listProjects,
+  projectLayout,
+  projectState,
   readAnnotations,
   writeAnnotations,
   writeParamProposal,
-} from '../proposals.ts'
-import type { Annotation, AnnotationInput } from '../protocol.ts'
+} from '../index.ts'
 import { tempPaths } from './helpers.ts'
 
 const png = () => `data:image/png;base64,${PNG.sync.write(new PNG({ width: 2, height: 2 })).toString('base64')}`

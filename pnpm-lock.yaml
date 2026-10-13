@@ -23,6 +23,12 @@ importers:
       '@scad/core':
         specifier: workspace:*
         version: link:../../libs/core
+      '@scad/geometry':
+        specifier: workspace:*
+        version: link:../../libs/geometry
+      '@scad/protocol':
+        specifier: workspace:*
+        version: link:../../libs/protocol
     devDependencies:
       '@types/node':
         specifier: ^26.6.5
@@ -48,9 +54,12 @@ importers:
       '@react-three/fiber':
         specifier: ^9.8.1
         version: 9.8.1(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(three@0.186.1)
-      '@scad/core':
+      '@scad/geometry':
         specifier: workspace:*
-        version: link:../../libs/core
+        version: link:../../libs/geometry
+      '@scad/protocol':
+        specifier: workspace:*
+        version: link:../../libs/protocol
       lucide-react:
         specifier: ^1.55.0
         version: 1.55.0(@types/react@19.3.0)(react@19.3.0)
@@ -94,6 +103,12 @@ importers:
 
   libs/core:
     dependencies:
+      '@scad/geometry':
+        specifier: workspace:*
+        version: link:../geometry
+      '@scad/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       pngjs:
         specifier: ^7.0.0
         version: 7.0.0
@@ -117,11 +132,42 @@ importers:
         specifier: ^5.0.4
         version: 5.0.4(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(yaml@2.9.1))
 
+  libs/geometry:
+    dependencies:
+      '@scad/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.4
+        version: 5.0.4(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(yaml@2.9.1))
+
+  libs/protocol:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^5.0.4
+        version: 5.0.4(@types/node@26.6.5)(vite@8.3.4(@types/node@26.6.5)(yaml@2.9.1))
+
   libs/vite-plugin-scad:
     dependencies:
       '@scad/core':
         specifier: workspace:*
         version: link:../core
+      '@scad/protocol':
+        specifier: workspace:*
+        version: link:../protocol
     devDependencies:
       '@types/node':
         specifier: ^26.6.5

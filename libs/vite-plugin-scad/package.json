@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@scad/core": "workspace:*"
+    "@scad/core": "workspace:*",
+    "@scad/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
