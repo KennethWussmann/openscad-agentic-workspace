@@ -22,6 +22,9 @@ export type Flags = {
   ref?: string
   project?: string
   open?: boolean
+  all?: boolean
+  'accept-fail'?: boolean
+  focus?: string
 }
 
 export type Ctx = {

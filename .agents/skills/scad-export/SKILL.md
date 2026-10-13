@@ -6,6 +6,7 @@ description: Export workspace models to files - STL, 3MF, OBJ, OFF, WRL, PNG ren
 # Exporting
 
 ```bash
+pnpm scad release <id> -m "..."                # check, checkpoint, then export the configured formats
 pnpm scad export <id>                          # formats from config
 pnpm scad export <id> --formats 3mf,stl,png   # override
 pnpm scad export <id> --part lid
@@ -102,7 +103,7 @@ Export it with `pnpm scad export <id> --part panel-outline --formats svg,dxf`. E
 
 ## Before delivering for printing
 
-Run `pnpm scad check <id>` first. It covers most of this list against the active printer profile (`pnpm scad printer <id>`). If the user prints on a different printer or nozzle, select it in the project's `config.yaml` under `print` first. `export` notes when the check is missing, outdated or failed.
+Deliver with `pnpm scad release <id> -m "..."`: it runs the check, stops on FAIL, then checkpoints and exports, so the files always map to a checked version. Use plain `pnpm scad export <id>` only when the current state is already checked and checkpointed, or for extra formats and parts. The check covers most of this list against the active printer profile (`pnpm scad printer <id>`). If the user prints on a different printer or nozzle, select it in the project's `config.yaml` under `print` first. `export` notes when the check is missing, outdated or failed.
 
 Run through this and fix or flag anything that fails:
 
@@ -110,7 +111,7 @@ Run through this and fix or flag anything that fails:
 - `check` manifold is PASS: watertight, no flipped faces, no zero-thickness fins.
 - Each part sits on z = 0 in its print orientation, nothing floating, one body per part unless intended (`check` bed and bodies).
 - Bounding boxes fit the user's printer bed (`check` bed; ask for the bed size if unknown).
-- Wall thickness follows the scad-craft defaults (`check` walls); check a section snapshot through the thinnest reported region.
+- Wall thickness follows the scad-craft defaults (`check` walls); check a focused section snapshot (`--focus`) through the thinnest reported region.
 - Clearances, fits and screw holes use the `/* [Print] */` tolerance parameters, and their defaults match the tolerances of `pnpm scad printer <id>`. `check` does not measure clearances between parts, so verify this yourself.
 - FDM: overhangs and bridges are printable or the user knows supports are needed (`check` overhangs lists every region).
 - Resin: the user knows where islands need supports, and hollow parts have drain and vent holes of at least `drainHole` mm (`check` islands and bodies).

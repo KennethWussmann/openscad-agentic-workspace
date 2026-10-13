@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import {
+  type Focus,
   readRender,
   renderView,
   requireProject,
@@ -21,6 +22,17 @@ const parseSection = (raw: string): Section => {
   return { axis: m[1].toLowerCase() as Section['axis'], at: Number(m[2]), keep: (m[3] as Section['keep']) ?? 'below' }
 }
 
+const DEFAULT_FOCUS_RADIUS = 5
+
+const parseFocus = (raw: string): Focus => {
+  const [point, radius] = raw.split(':')
+  const center = point.split(',').map((v) => Number(v.trim()))
+  const r = radius === undefined ? DEFAULT_FOCUS_RADIUS : Number(radius)
+  if (center.length !== 3 || center.some((v) => !Number.isFinite(v)) || !(r > 0))
+    throw new UsageError('--focus expects x,y,z[:radius], e.g. 20.5,32.8,3.7 or 20.5,32.8,3.7:8')
+  return { center: center as Vec3, radius: r }
+}
+
 export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
   const layout = requireProject(paths, project)
@@ -30,6 +42,7 @@ export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> =>
   const selected = result.parts.filter((p) => p.model && (!parts || parts.includes(p.id)))
   if (!selected.length) throw new Error('No rendered parts match')
   const section = flags.section ? parseSection(flags.section) : null
+  const focus = flags.focus ? parseFocus(flags.focus) : null
   if (flags.view && !(flags.view in VIEWS))
     throw new UsageError(`--view must be one of ${Object.keys(VIEWS).join(', ')}`)
   const rotation: Vec3 = flags.view
@@ -39,7 +52,8 @@ export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> =>
       : [...VIEWS.iso]
   const size = Number(flags.size ?? 900)
   const name =
-    flags.out ?? `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}.png`
+    flags.out ??
+    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}.png`
   const out = path.join(layout.preview, path.basename(name))
   const settings = settingsFor(paths, project)
   const openscad = await resolveOpenscad(paths)
@@ -54,6 +68,7 @@ export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> =>
       out,
       section,
       bbox,
+      focus,
       axes: true,
     },
   )

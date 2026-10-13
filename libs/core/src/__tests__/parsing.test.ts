@@ -85,19 +85,20 @@ describe('parseParamExport', () => {
 
 describe('wrapperSource', () => {
   it('imports every model and cuts away the far side of a section', () => {
-    const src = wrapperSource(
-      ['C:\\w\\a.3mf', '/w/b.3mf'],
-      { axis: 'x', at: 5, keep: 'below' },
-      {
-        min: [0, 0, 0],
-        max: [10, 10, 10],
-        size: [10, 10, 10],
-      },
-    )
+    const src = wrapperSource(['C:\\w\\a.3mf', '/w/b.3mf'], {
+      section: { axis: 'x', at: 5, keep: 'below' },
+      bbox: { min: [0, 0, 0], max: [10, 10, 10], size: [10, 10, 10] },
+    })
     expect(src).toContain('import("C:/w/a.3mf")')
     expect(src).toContain('import("/w/b.3mf")')
     expect(src).toMatch(/difference\(\)/)
     expect(src).toContain('translate([5, -545, -545]) cube([1100, 1100, 1100])')
+  })
+
+  it('clips the model to a cube around the focus point', () => {
+    const src = wrapperSource(['/w/a.3mf'], { focus: { center: [10, 20, 2], radius: 4 } })
+    expect(src).toMatch(/^intersection\(\) \{\n {2}union\(\) \{/)
+    expect(src).toContain('translate([6, 16, -2]) cube(8)')
   })
 })
 

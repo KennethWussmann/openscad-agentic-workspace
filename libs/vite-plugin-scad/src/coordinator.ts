@@ -4,6 +4,7 @@ export type RenderRunner = (
   project: string,
   kind: RenderKind,
   overrides: Record<string, DefineValue>,
+  force: boolean,
 ) => Promise<RenderResult>
 
 type Deferred = {
@@ -11,6 +12,7 @@ type Deferred = {
   resolve: (r: RenderResult) => void
   reject: (e: unknown) => void
   overrides: Record<string, DefineValue>
+  force: boolean
 }
 
 type Slot = {
@@ -18,14 +20,14 @@ type Slot = {
   pending: Deferred | null
 }
 
-const deferred = (overrides: Record<string, DefineValue>): Deferred => {
+const deferred = (overrides: Record<string, DefineValue>, force: boolean): Deferred => {
   let resolve!: (r: RenderResult) => void
   let reject!: (e: unknown) => void
   const promise = new Promise<RenderResult>((res, rej) => {
     resolve = res
     reject = rej
   })
-  return { promise, resolve, reject, overrides }
+  return { promise, resolve, reject, overrides, force }
 }
 
 export const createCoordinator = (runner: RenderRunner) => {
@@ -41,7 +43,7 @@ export const createCoordinator = (runner: RenderRunner) => {
   }
 
   const start = (project: string, kind: RenderKind, job: Deferred, s: Slot) => {
-    const run = runner(project, kind, job.overrides)
+    const run = runner(project, kind, job.overrides, job.force)
     s.running = run
     run.then(job.resolve, job.reject).finally(() => {
       s.running = null
@@ -51,13 +53,14 @@ export const createCoordinator = (runner: RenderRunner) => {
     })
   }
 
-  const request = (project: string, kind: RenderKind, overrides: Record<string, DefineValue> = {}) => {
+  const request = (project: string, kind: RenderKind, overrides: Record<string, DefineValue> = {}, force = true) => {
     const s = slot(project, kind)
     if (s.pending) {
       s.pending.overrides = overrides
+      s.pending.force ||= force
       return s.pending.promise
     }
-    const job = deferred(overrides)
+    const job = deferred(overrides, force)
     if (s.running) s.pending = job
     else start(project, kind, job, s)
     return job.promise

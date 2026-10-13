@@ -12,10 +12,11 @@ Each project keeps a linear history in `workspace/<id>/versions/vNNN/`: a copy o
 One checkpoint per completed user request, after a clean render and a printability check:
 
 ```bash
-pnpm scad render <id>
-pnpm scad check <id>
+pnpm scad check <id>                                         # renders first if the sources changed
 pnpm scad checkpoint <id> -m "Wider base, two M3 mounting holes"
 ```
+
+When the user also wants files, or the project already has exports in `out/`, use `pnpm scad release <id> -m "..."` instead: it runs check, checkpoint and export in that order, stops on FAIL and keeps all three on the same render. `--accept-fail` releases over FAILs the user accepted under `## Decisions`.
 
 - Fix FAILs from `check` first, or explain them to the user if they are intended. Findings the user accepted are recorded under `## Decisions` in `brief.md` (scad skill, step 4b) and do not block the checkpoint. `checkpoint` adds a note when the check is missing, older than the render or failed.
 
@@ -85,5 +86,5 @@ Handle annotations like this:
 
 ### Finishing either kind
 
-1. `pnpm scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), `pnpm scad check <id>`, `pnpm scad checkpoint <id> -m "..."`.
+1. `pnpm scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), then `pnpm scad check <id>` and `pnpm scad checkpoint <id> -m "..."`, or `pnpm scad release <id> -m "..."` when files are wanted.
 2. `pnpm scad proposal <id> --clear` clears both kinds. In your reply, go through annotations by number ("1: hole now 3.7 mm, 2: front edge rounded r1").
