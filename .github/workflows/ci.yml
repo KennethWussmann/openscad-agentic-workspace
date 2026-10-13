@@ -25,6 +25,22 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Install OpenSCAD
+        env:
+          OPENSCAD_APPIMAGE: https://files.openscad.org/snapshots/OpenSCAD-2026.10.11-x86_64.AppImage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends xvfb xauth libgl1 libegl1 libopengl0 libglu1-mesa libgl1-mesa-dri
+          cd "$RUNNER_TEMP"
+          curl -fsSL -o openscad.AppImage "$OPENSCAD_APPIMAGE"
+          chmod +x openscad.AppImage
+          ./openscad.AppImage --appimage-extract > /dev/null
+          sudo ln -s "$RUNNER_TEMP/squashfs-root/AppRun" /usr/local/bin/openscad
+          openscad -v
+
+      - name: Doctor
+        run: pnpm scad doctor
+
       - name: Lint
         run: pnpm lint
 
@@ -32,7 +48,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm test
+        run: xvfb-run -a pnpm test
 
       - name: Build
         run: pnpm build

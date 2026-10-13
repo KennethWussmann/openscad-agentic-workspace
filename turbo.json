@@ -4,7 +4,8 @@
   "tasks": {
     "typecheck": {},
     "test": {
-      "env": ["OPENSCAD_PATH"]
+      "env": ["OPENSCAD_PATH"],
+      "passThroughEnv": ["DISPLAY", "XAUTHORITY"]
     },
     "build": {
       "dependsOn": ["typecheck"],

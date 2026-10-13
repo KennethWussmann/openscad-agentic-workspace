@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { createProject, discoverOpenscad, resolvePaths } from '@scad/core'
+import { createProject, resolvePaths } from '@scad/core'
 import { API, APP_ID, type ExportResult } from '@scad/protocol'
 import { createServer, type ViteDevServer } from 'vite'
 import { afterAll, beforeAll, expect, it } from 'vitest'
@@ -136,24 +136,19 @@ it('rejects exports for unknown projects and invalid overrides', async () => {
   expect((await postExport('box', { overrides: [1] })).status).toBe(400)
 })
 
-const found = await discoverOpenscad({ configured: null })
-
-it.skipIf(!found.openscad)(
-  'exports 3MF with a mesh check, tweaked files separately, one export at a time',
-  async () => {
-    const [first, second] = await Promise.all([postExport('box', {}), postExport('box', {})])
-    expect([first.status, second.status].sort()).toEqual([200, 409])
-    const result = (await (first.status === 200 ? first : second).json()) as ExportResult
-    expect(result.files.map((f) => [f.file, f.format, f.ok])).toEqual([['out/box-main.3mf', '3mf', true]])
-    expect(result.meshCheck?.parts.map((p) => p.id)).toEqual(['main'])
-    expect(result.overrides).toEqual({})
-    const file = await fetch(`${url}/projects/box/file/out/box-main.3mf`)
-    expect(file.headers.get('content-type')).toBe('model/3mf')
-    const tweaked = (await (await postExport('box', { overrides: { width: 30 } })).json()) as ExportResult
-    expect(tweaked.version).toBe('tweaked')
-    expect(tweaked.overrides).toEqual({ width: 30 })
-    expect(tweaked.files.map((f) => f.file)).toEqual(['out/box-main-tweaked.3mf'])
-    const record = JSON.parse(readFileSync(path.join(workspace, 'box', 'out', 'export.json'), 'utf8')) as ExportResult
-    expect(record.overrides).toEqual({ width: 30 })
-  },
-)
+it('exports 3MF with a mesh check, tweaked files separately, one export at a time', async () => {
+  const [first, second] = await Promise.all([postExport('box', {}), postExport('box', {})])
+  expect([first.status, second.status].sort()).toEqual([200, 409])
+  const result = (await (first.status === 200 ? first : second).json()) as ExportResult
+  expect(result.files.map((f) => [f.file, f.format, f.ok])).toEqual([['out/box-main.3mf', '3mf', true]])
+  expect(result.meshCheck?.parts.map((p) => p.id)).toEqual(['main'])
+  expect(result.overrides).toEqual({})
+  const file = await fetch(`${url}/projects/box/file/out/box-main.3mf`)
+  expect(file.headers.get('content-type')).toBe('model/3mf')
+  const tweaked = (await (await postExport('box', { overrides: { width: 30 } })).json()) as ExportResult
+  expect(tweaked.version).toBe('tweaked')
+  expect(tweaked.overrides).toEqual({ width: 30 })
+  expect(tweaked.files.map((f) => f.file)).toEqual(['out/box-main-tweaked.3mf'])
+  const record = JSON.parse(readFileSync(path.join(workspace, 'box', 'out', 'export.json'), 'utf8')) as ExportResult
+  expect(record.overrides).toEqual({ width: 30 })
+})

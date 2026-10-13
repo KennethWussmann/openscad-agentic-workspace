@@ -9,7 +9,6 @@ import {
   discoverOpenscad,
   exportProject,
   loadProjectConfig,
-  type Openscad,
   projectLayout,
   readCheck,
   readRender,
@@ -18,10 +17,10 @@ import {
 } from '../index.ts'
 import { tempPaths, write } from './helpers.ts'
 
-const found = await discoverOpenscad({ configured: null })
-const openscad = found.openscad as Openscad
+const { openscad } = await discoverOpenscad({ configured: null })
+if (!openscad) throw new Error('OpenSCAD is required to run the tests')
 
-describe.skipIf(!found.openscad)('with OpenSCAD', () => {
+describe('with OpenSCAD', () => {
   const paths = tempPaths('openscad')
 
   beforeAll(() => {

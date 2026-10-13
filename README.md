@@ -219,7 +219,7 @@ Dependencies point one way: `protocol` <- `geometry` <- `core` <- `cli` / `vite-
 ```bash
 pnpm dev         # viewer only
 pnpm typecheck
-pnpm test        # OpenSCAD-dependent tests skip when OpenSCAD is not installed
+pnpm test        # requires OpenSCAD
 pnpm lint
 pnpm build
 ```
