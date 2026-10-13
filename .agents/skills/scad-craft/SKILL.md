@@ -40,7 +40,7 @@ board_t = 18; // [10:0.5:40]
 wall = 2.4; // [1.2:0.2:5]
 
 /* [Print] */
-// Extra gap for sliding fits
+// Gap per side for sliding fits, default is tolerances.sliding from `pnpm scad printer`
 clearance = 0.3; // [0:0.05:1]
 part = "assembly"; // [assembly, clip, cover]
 
@@ -99,7 +99,7 @@ The profile comes from `config.yaml`:
 - When the user changes the nozzle or printer, change `print` in the project config, not the printer definition, then re-check the parameters below.
 
 Carry the profile into the model so it stays tweakable:
-- Put tolerances into the `/* [Print] */` group as parameters whose defaults are the profile values: `clearance = 0.3; // sliding fit from the profile`, `press_fit`, `hole_extra`. The profile's `tolerances` are per side for mating parts (`press`, `sliding`, `loose`); `hole` is added to the diameter of holes for screws and pins.
+- Put tolerances into the `/* [Print] */` group as parameters whose defaults are the profile values: `clearance` (`sliding`), `press_fit` (`press`), `loose_fit` (`loose`), `hole_extra` (`hole`). Copy the numbers `pnpm scad printer <id>` prints for this project; never take them from examples in this skill, they differ per printer and process. The profile's `tolerances` are per side for mating parts (`press`, `sliding`, `loose`); `hole` is added to the diameter of holes for screws and pins.
 - Derive minimum thicknesses from profile values captured as parameters (`nozzle = 0.4;`, `wall = 3 * nozzle;`) instead of literals, and guard them with `assert`.
 - Note the profile you designed for (printer, process, nozzle or pixel, layer height) under Decisions in `brief.md`. If the profile changes later, update these parameters and say so.
 
@@ -117,7 +117,11 @@ Resin (`process: resin`, SLA, MSLA, DLP):
 - Tolerances are much tighter than FDM; take them from the profile.
 
 Both:
-- Metric screw reference (clearance hole / head diameter / head height): M2 2.4/3.8/2, M2.5 2.9/4.5/2.5, M3 3.4/5.5/3, M4 4.5/7/4, M5 5.5/8.5/5. Heat-set inserts M3: about 4.0-4.2 mm hole, 5-6 mm deep. Hex nut M3: 5.5 mm across flats, 2.4 mm thick (model the hole at flats + 0.3 mm, `$fn = 6`, rotated so flats are parallel to the build plate edges where it matters).
+- Metric screw reference, nominal sizes (shank diameter / head diameter / head height): M2 2/3.8/2, M2.5 2.5/4.5/2.5, M3 3/5.5/3, M4 4/7/4, M5 5/8.5/5. Hex nuts (across flats / thickness): M2 4/1.6, M2.5 5/2, M3 5.5/2.4, M4 7/3.2, M5 8/4. These are the real part sizes; add the profile's tolerances when modelling the holes:
+  - Screw clearance holes: shank diameter + `hole_extra`.
+  - Head counterbores: head diameter + 2 x `loose_fit`, depth head height + one layer.
+  - Nut traps: flats + 2 x `clearance`, thickness + one layer, `$fn = 6`, rotated so flats are parallel to the build plate edges where it matters.
+  - Heat-set inserts are an interference fit sized by the insert, not by the profile: M3 about 4.0-4.2 mm hole, 5-6 mm deep. Use the manufacturer's recommended hole when the user names the insert.
 - State the assumptions you made in `brief.md`.
 
 ## Fixing check findings
