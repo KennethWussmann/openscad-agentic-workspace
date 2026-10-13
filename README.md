@@ -209,6 +209,7 @@ workspace/                    gitignored
 The repo is a pnpm workspace orchestrated by Turborepo and linted with Biome:
 - `apps/cli`: the `pnpm scad` CLI, one module per command group
 - `apps/web`: the React + three.js viewer (reusable components, feature panels, three.js scene, store)
+- `apps/e2e`: Playwright end-to-end tests against the real dev server, CLI and OpenSCAD
 - `libs/protocol`: shared types, constants, events and the typed HTTP client (Node and browser)
 - `libs/geometry`: mesh topology, surface and printability analysis (Node and browser)
 - `libs/core`: Node-only config, discovery, rendering, versions, libraries, exports, printability check of rendered files
@@ -219,12 +220,17 @@ Dependencies point one way: `protocol` <- `geometry` <- `core` <- `cli` / `vite-
 ```bash
 pnpm dev         # viewer only
 pnpm typecheck
-pnpm test        # requires OpenSCAD
+pnpm test        # unit and component tests, requires OpenSCAD
+pnpm e2e         # end-to-end tests, requires OpenSCAD and `pnpm --filter @scad/e2e exec playwright install chromium`
 pnpm lint
 pnpm build
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests and build.
+Viewer unit and component tests live next to the code in `apps/web/src` (`*.test.ts(x)`, Vitest, Testing Library, jsdom). Shared test data is in `apps/web/src/test/fixtures.ts`.
+
+The end-to-end tests start their own dev server on port 5399 (`E2E_PORT`) with a throwaway workspace in `apps/e2e/.test-tmp`, so your `workspace/` and `config.yaml` stay untouched. Every test creates its own project through `pnpm scad`, edits files on disk and drives the viewer in headless Chromium with software WebGL. The 3D scene is asserted through the UI it feeds, like the envelope in the title block, which comes from the meshes loaded into three.js. Tests in `broadcast.spec.ts` affect every open tab and run after the others, one at a time. Failures leave traces and screenshots in `apps/e2e/.test-tmp/results`, open them with `pnpm --filter @scad/e2e exec playwright show-trace <trace.zip>`.
+
+CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests, build and the end-to-end tests.
 
 ## Honorable Mentions
 
