@@ -110,7 +110,8 @@ Run through this and fix or flag anything that fails:
 - `check` manifold is PASS: watertight, no flipped faces, no zero-thickness fins.
 - Each part sits on z = 0 in its print orientation, nothing floating, one body per part unless intended (`check` bed and bodies).
 - Bounding boxes fit the user's printer bed (`check` bed; ask for the bed size if unknown).
-- Wall thickness and clearances follow the scad-craft defaults (`check` walls); check a section snapshot through the thinnest reported region. Clearances between parts are not measured by `check`.
+- Wall thickness follows the scad-craft defaults (`check` walls); check a section snapshot through the thinnest reported region.
+- Clearances, fits and screw holes use the `/* [Print] */` tolerance parameters, and their defaults match the tolerances of `pnpm scad printer <id>`. `check` does not measure clearances between parts, so verify this yourself.
 - FDM: overhangs and bridges are printable or the user knows supports are needed (`check` overhangs lists every region).
 - Resin: the user knows where islands need supports, and hollow parts have drain and vent holes of at least `drainHole` mm (`check` islands and bodies).
 - Checkpointed, so files map to a version.
