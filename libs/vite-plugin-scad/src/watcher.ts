@@ -35,6 +35,7 @@ export const watchWorkspace = (server: ViteDevServer, paths: Paths, handlers: Wa
     watcher = watch(paths.workspace, { recursive: true }, (_event, filename) => {
       if (filename) onFile(filename.toString())
     })
+    watcher.on('error', (e) => server.config.logger.warn(`[scad] file watcher: ${String(e)}`))
   } catch (e) {
     server.config.logger.warn(`[scad] file watching disabled: ${String(e)}`)
   }

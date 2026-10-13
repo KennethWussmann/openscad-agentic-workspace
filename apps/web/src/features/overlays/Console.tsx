@@ -15,7 +15,7 @@ export const Console = ({ project }: { project: ProjectState }) => {
       <header>
         <strong>Console</strong>
         <span className="mono">{lines.length} lines</span>
-        <IconButton onClick={toggle}>
+        <IconButton title="Close console" onClick={toggle}>
           <X size={14} />
         </IconButton>
       </header>

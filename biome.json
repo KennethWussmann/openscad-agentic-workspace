@@ -47,6 +47,26 @@
       }
     },
     {
+      "includes": ["apps/web/src/**", "!**/*.test.ts", "!**/*.test.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noFocusedTests": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/e2e/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noEmptyPattern": "off"
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/*.css"],
       "linter": {
         "rules": {

@@ -31,7 +31,7 @@ const ParamField = ({ def }: { def: ParamDef }) => {
       <div className="param-head">
         <span className="mono">{def.name}</span>
         {isEdited && (
-          <IconButton title="Reset" onClick={() => setEdit(def.name, undefined)}>
+          <IconButton title={`Reset ${def.name}`} onClick={() => setEdit(def.name, undefined)}>
             <RotateCcw size={12} />
           </IconButton>
         )}
@@ -39,6 +39,7 @@ const ParamField = ({ def }: { def: ParamDef }) => {
       {def.caption && <small>{def.caption}</small>}
       <ParamInput
         def={def}
+        label={def.name}
         value={edits[def.name] ?? def.initial}
         onChange={(v) => setEdit(def.name, sameJson(v, def.initial) ? undefined : v)}
       />

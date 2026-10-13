@@ -2,14 +2,16 @@ import type { DefineValue, ParamDef } from '@scad/protocol'
 import { useState } from 'react'
 import { cx } from '../../components/classes.ts'
 
-type InputProps = { value: DefineValue; onChange: (v: DefineValue) => void }
+type InputProps = { label: string; value: DefineValue; onChange: (v: DefineValue) => void }
 
-const VectorInput = ({ value, onChange }: InputProps) => {
+const VectorInput = ({ label, value, onChange }: InputProps) => {
   const [text, setText] = useState(JSON.stringify(value))
   const [bad, setBad] = useState(false)
   return (
     <input
       type="text"
+      aria-label={label}
+      aria-invalid={bad}
       className={cx('mono', bad && 'is-bad')}
       value={text}
       onChange={(e) => {
@@ -26,7 +28,7 @@ const VectorInput = ({ value, onChange }: InputProps) => {
   )
 }
 
-const NumberInput = ({ def, value, onChange }: InputProps & { def: ParamDef }) => {
+const NumberInput = ({ def, label, value, onChange }: InputProps & { def: ParamDef }) => {
   const n = Number(value)
   const ranged = def.min !== undefined && def.max !== undefined
   return (
@@ -34,6 +36,7 @@ const NumberInput = ({ def, value, onChange }: InputProps & { def: ParamDef }) =
       {ranged && (
         <input
           type="range"
+          aria-label={`${label} slider`}
           min={def.min}
           max={def.max}
           step={def.step ?? 'any'}
@@ -43,6 +46,7 @@ const NumberInput = ({ def, value, onChange }: InputProps & { def: ParamDef }) =
       )}
       <input
         type="number"
+        aria-label={label}
         className="mono"
         step={def.step ?? 'any'}
         value={n}
@@ -52,10 +56,14 @@ const NumberInput = ({ def, value, onChange }: InputProps & { def: ParamDef }) =
   )
 }
 
-export const ParamInput = ({ def, value, onChange }: InputProps & { def: ParamDef }) => {
+export const ParamInput = ({ def, label, value, onChange }: InputProps & { def: ParamDef }) => {
   if (def.options)
     return (
-      <select value={JSON.stringify(value)} onChange={(e) => onChange(JSON.parse(e.target.value) as DefineValue)}>
+      <select
+        aria-label={label}
+        value={JSON.stringify(value)}
+        onChange={(e) => onChange(JSON.parse(e.target.value) as DefineValue)}
+      >
         {def.options.map((o) => (
           <option key={JSON.stringify(o.value)} value={JSON.stringify(o.value)}>
             {o.name}
@@ -65,11 +73,18 @@ export const ParamInput = ({ def, value, onChange }: InputProps & { def: ParamDe
     )
   if (def.type === 'boolean')
     return (
-      <button type="button" className={cx('switch', Boolean(value) && 'is-on')} onClick={() => onChange(!value)}>
+      <button
+        type="button"
+        role="switch"
+        aria-label={label}
+        aria-checked={Boolean(value)}
+        className={cx('switch', Boolean(value) && 'is-on')}
+        onClick={() => onChange(!value)}
+      >
         <span />
       </button>
     )
-  if (def.type === 'number') return <NumberInput def={def} value={value} onChange={onChange} />
-  if (def.type === 'vector') return <VectorInput value={value} onChange={onChange} />
-  return <input type="text" value={String(value)} onChange={(e) => onChange(e.target.value)} />
+  if (def.type === 'number') return <NumberInput def={def} label={label} value={value} onChange={onChange} />
+  if (def.type === 'vector') return <VectorInput label={label} value={value} onChange={onChange} />
+  return <input type="text" aria-label={label} value={String(value)} onChange={(e) => onChange(e.target.value)} />
 }

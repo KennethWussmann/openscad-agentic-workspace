@@ -22,7 +22,7 @@ const ProjectPicker = ({ projects, project }: { projects: ProjectSummary[]; proj
   const selectProject = useStore((s) => s.selectProject)
   return (
     <div className="project-pick">
-      <select value={projectId ?? ''} onChange={(e) => selectProject(e.target.value || null)}>
+      <select aria-label="Project" value={projectId ?? ''} onChange={(e) => selectProject(e.target.value || null)}>
         <option value="">Select a project</option>
         {projects.map((p) => (
           <option key={p.id} value={p.id}>
