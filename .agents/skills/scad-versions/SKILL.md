@@ -12,11 +12,11 @@ Each project keeps a linear history in `workspace/<id>/versions/vNNN/`: a copy o
 One checkpoint per completed user request, after a clean render and a printability check:
 
 ```bash
-pnpm scad check <id>                                         # renders first if the sources changed
-pnpm scad checkpoint <id> -m "Wider base, two M3 mounting holes"
+pnpm -s scad check <id>                                         # renders first if the sources changed
+pnpm -s scad checkpoint <id> -m "Wider base, two M3 mounting holes"
 ```
 
-When the user also wants files, or the project already has exports in `out/`, use `pnpm scad release <id> -m "..."` instead: it runs check, checkpoint and export in that order, stops on FAIL and keeps all three on the same render. `--accept-fail` releases over FAILs the user accepted under `## Decisions`.
+When the user also wants files, or the project already has exports in `out/`, use `pnpm -s scad release <id> -m "..."` instead: it runs check, checkpoint and export in that order, stops on FAIL and keeps all three on the same render. `--accept-fail` releases over FAILs the user accepted under `## Decisions`.
 
 - Fix FAILs from `check` first, or explain them to the user if they are intended. Findings the user accepted are recorded under `## Decisions` in `brief.md` (scad skill, step 4b) and do not block the checkpoint. `checkpoint` adds a note when the check is missing, older than the render or failed.
 
@@ -25,12 +25,12 @@ When the user also wants files, or the project already has exports in `out/`, us
 - Do not checkpoint intermediate steps, experiments or broken states. If you explored alternatives, checkpoint the one the user chose.
 - Mention the new version id in your reply.
 
-`pnpm scad versions <id>` lists the history and whether the working copy changed since the latest version. `pnpm scad status <id>` shows the same plus render state.
+`pnpm -s scad versions <id>` lists the history and whether the working copy changed since the latest version. `pnpm -s scad status <id>` shows the same plus render state.
 
 ## Going back
 
 ```bash
-pnpm scad restore <id> v003
+pnpm -s scad restore <id> v003
 ```
 
 Copies `src/` and `config.yaml` of v003 back, renders, and records the result as a new version ("Restore v003: ..."), so nothing is ever lost and the timeline stays linear. If the user only wants to look at an old version, point them to the timeline in the viewer instead.
@@ -47,11 +47,11 @@ To combine an old idea with current work, read `workspace/<id>/versions/vNNN/src
 
 ## Proposals from the browser
 
-The viewer has two independent ways to send feedback. Both land in `workspace/<id>/proposals/`, and `pnpm scad list` and `status` flag them as pending. One command shows both:
+The viewer has two independent ways to send feedback. Both land in `workspace/<id>/proposals/`, and `pnpm -s scad list` and `status` flag them as pending. One command shows both:
 
 ```bash
-pnpm scad proposal <id>          # parameter table and/or the list of 3D notes
-pnpm scad proposal <id> --json   # the same, machine-readable
+pnpm -s scad proposal <id>          # parameter table and/or the list of 3D notes
+pnpm -s scad proposal <id> --json   # the same, machine-readable
 ```
 
 ### Parameter proposals (`proposals/params.json`)
@@ -80,11 +80,11 @@ Handle annotations like this:
 
 1. Read the snapshot PNG first. It is the user's exact view with numbered balloons on leader lines, and a legend of all notes in the bottom-left corner.
 2. For each note, map the point to source geometry. Use the coordinates, the surface data and the part file to find the responsible module, primitive or loop iteration. Remember the transforms (`translate`, `rotate`, `mirror`, loops) between the primitive and world coordinates. For a hole, look for a `cylinder` whose radius matches `radius` (or diameter `2*radius`) and whose axis matches; for an edge, look for the two faces that meet along `a`..`b`.
-3. If anything is ambiguous, confirm it before editing. Run `pnpm scad snapshot <id> --section x=<point.x>` (or `y`/`z`, whichever cuts through the feature) and read it, compare `surface.bbox` against the dimensions in your code, or `echo()` a candidate position. If you still cannot tell which feature is meant, ask the user and reference the note number.
+3. If anything is ambiguous, confirm it before editing. Run `pnpm -s scad snapshot <id> --section x=<point.x>` (or `y`/`z`, whichever cuts through the feature) and read it, compare `surface.bbox` against the dimensions in your code, or `echo()` a candidate position. If you still cannot tell which feature is meant, ask the user and reference the note number.
 4. Interpret the text in context. "0.5 mm bigger" on a hole usually means the diameter; say so if you assume it. Prefer changing the parameter that drives the feature over a one-off hack, and keep symmetric or repeated features consistent (all four holes, not only the clicked one) unless the note says otherwise; mention that choice in your reply.
 5. Notes placed on an old version or a tweak preview: check whether the feature still exists at the same place in the current source before applying.
 
 ### Finishing either kind
 
-1. `pnpm scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), then `pnpm scad check <id>` and `pnpm scad checkpoint <id> -m "..."`, or `pnpm scad release <id> -m "..."` when files are wanted.
-2. `pnpm scad proposal <id> --clear` clears both kinds. In your reply, go through annotations by number ("1: hole now 3.7 mm, 2: front edge rounded r1").
+1. `pnpm -s scad render <id>`, inspect (for annotations: the snapshot or a section at the annotated points), then `pnpm -s scad check <id>` and `pnpm -s scad checkpoint <id> -m "..."`, or `pnpm -s scad release <id> -m "..."` when files are wanted.
+2. `pnpm -s scad proposal <id> --clear` clears both kinds. In your reply, go through annotations by number ("1: hole now 3.7 mm, 2: front edge rounded r1").

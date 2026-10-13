@@ -1,8 +1,12 @@
-import { existsSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { existsSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import {
   type Focus,
+  modelOutlines,
+  parseDefineInput,
   readRender,
+  renderTemporary,
   renderView,
   requireProject,
   resolveOpenscad,
@@ -12,7 +16,7 @@ import {
   type ViewName,
 } from '@scad/core'
 import { unionBoxes } from '@scad/geometry'
-import type { Vec3 } from '@scad/protocol'
+import type { DefineValue, PartResult, Vec3 } from '@scad/protocol'
 import { type Ctx, need, type Outcome, partsFlag, rel, settingsFor, UsageError } from '../context.ts'
 import { formatDiagnostic } from '../format/common.ts'
 
@@ -33,14 +37,35 @@ const parseFocus = (raw: string): Focus => {
   return { center: center as Vec3, radius: r }
 }
 
-export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
+const parseDefines = (raw: string[] = []) =>
+  Object.fromEntries(
+    raw.map((entry) => {
+      const m = entry.match(/^\s*(\$?[A-Za-z_]\w*)\s*=(.*)$/)
+      if (!m) throw new UsageError('-D expects name=value, e.g. -D part=assembly or -D width=40')
+      return [m[1], parseDefineInput(m[2])]
+    }),
+  ) as Record<string, DefineValue>
+
+const renderedParts = async (ctx: Ctx, project: string, dir: string, defines: Record<string, DefineValue>) => {
+  const parts = partsFlag(ctx.flags)
+  if (Object.keys(defines).length) {
+    const openscad = await resolveOpenscad(ctx.paths)
+    return renderTemporary({ paths: ctx.paths, project, openscad, defines, outDir: dir, parts })
+  }
+  const result = readRender(ctx.paths, project)
+  if (!result) throw new Error(`Render ${project} first`)
+  return result.parts.filter((p) => !parts || parts.includes(p.id))
+}
+
+const failure = (parts: PartResult[]) =>
+  ['Render with -D failed', ...parts.flatMap((p) => p.diagnostics.map((d) => `  ${formatDiagnostic(d)}`))].join('\n')
+
+export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
+  const { paths, flags, args } = ctx
   const project = need(args[0], 'project id')
   const layout = requireProject(paths, project)
-  const result = readRender(paths, project)
-  if (!result) throw new Error(`Render ${project} first`)
-  const parts = partsFlag(flags)
-  const selected = result.parts.filter((p) => p.model && (!parts || parts.includes(p.id)))
-  if (!selected.length) throw new Error('No rendered parts match')
+  const defines = parseDefines(flags.define)
+  const defined = Object.keys(defines).length > 0
   const section = flags.section ? parseSection(flags.section) : null
   const focus = flags.focus ? parseFocus(flags.focus) : null
   if (flags.view && !(flags.view in VIEWS))
@@ -53,29 +78,40 @@ export const snapshot = async ({ paths, flags, args }: Ctx): Promise<Outcome> =>
   const size = Number(flags.size ?? 900)
   const name =
     flags.out ??
-    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}.png`
+    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}${defined ? '-defined' : ''}.png`
   const out = path.join(layout.preview, path.basename(name))
-  const settings = settingsFor(paths, project)
-  const openscad = await resolveOpenscad(paths)
-  const bbox = unionBoxes(selected.map((p) => p.bbox).filter((b) => b !== null))
-  const diagnostics = await renderView(
-    { paths, settings, openscad, cwd: layout.dir, temp: layout.temp },
-    {
-      models: selected.map((p) => path.join(layout.dir, p.model as string)),
-      rotation,
-      width: size,
-      height: size,
-      out,
-      section,
-      bbox,
-      focus,
-      axes: true,
-    },
-  )
-  const ok = existsSync(out) && !diagnostics.some((d) => d.level === 'error')
-  return {
-    data: { file: rel(paths, out), ok, diagnostics },
-    text: [ok ? `Wrote ${rel(paths, out)}` : 'Snapshot failed', ...diagnostics.map(formatDiagnostic)].join('\n'),
-    exitCode: ok ? 0 : 1,
+  const work = path.join(layout.temp, `snapshot-${randomBytes(4).toString('hex')}`)
+  try {
+    const rendered = await renderedParts(ctx, project, work, defines)
+    const selected = rendered.filter((p) => p.model)
+    if (defined && selected.length < rendered.length) throw new Error(failure(rendered.filter((p) => !p.model)))
+    if (!selected.length) throw new Error('No rendered parts match')
+    const settings = settingsFor(paths, project)
+    const openscad = await resolveOpenscad(paths)
+    const bbox = unionBoxes(selected.map((p) => p.bbox).filter((b) => b !== null))
+    const models = selected.map((p) => path.join(layout.dir, p.model as string))
+    const diagnostics = await renderView(
+      { paths, settings, openscad, cwd: layout.dir, temp: layout.temp },
+      {
+        models,
+        rotation,
+        width: size,
+        height: size,
+        out,
+        section,
+        bbox,
+        focus,
+        outlines: section || focus ? null : modelOutlines(models),
+        axes: true,
+      },
+    )
+    const ok = existsSync(out) && !diagnostics.some((d) => d.level === 'error')
+    return {
+      data: { file: rel(paths, out), ok, defines, diagnostics },
+      text: [ok ? `Wrote ${rel(paths, out)}` : 'Snapshot failed', ...diagnostics.map(formatDiagnostic)].join('\n'),
+      exitCode: ok ? 0 : 1,
+    }
+  } finally {
+    rmSync(work, { recursive: true, force: true })
   }
 }

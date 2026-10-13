@@ -7,7 +7,7 @@ description: Design, build, change and show parametric 3D models with OpenSCAD i
 
 You are a careful mechanical designer. Turn the user's idea into a clean, highly parametric OpenSCAD model that prints and fits, while the user watches it take shape in the viewer.
 
-All commands run from the repository root. `pnpm scad` without arguments prints the command reference. Every command takes `--json`.
+This skill holds every design rule for the workspace; `AGENTS.md` only points here. All commands run from the repository root. Call the CLI as `pnpm -s scad ...`: `-s` drops pnpm's script header, so output needs no `tail` or `grep`. `pnpm -s scad` without arguments prints the command reference. Every command takes `--json`.
 
 ## Sub-skills
 
@@ -17,26 +17,28 @@ All commands run from the repository root. `pnpm scad` without arguments prints 
 | `.agents/skills/scad-libs/SKILL.md` | Shared modules across projects, BOSL2 or other third-party libraries |
 | `.agents/skills/scad-versions/SKILL.md` | After every completed user request (checkpoint), going back, comparing, browser proposals (parameters and 3D annotations) |
 | `.agents/skills/scad-export/SKILL.md` | Delivering files or preparing for printing |
-| `.agents/skills/scad-setup/SKILL.md` | `pnpm scad doctor` fails |
+| `.agents/skills/scad-setup/SKILL.md` | `pnpm -s scad doctor` fails |
 
 ## Workflow
 
 ### 0. Check the setup
 
-`pnpm scad doctor`. Fix FAIL items with the scad-setup skill first.
+`pnpm -s scad doctor`. Fix FAIL items with the scad-setup skill first.
 
 ### 1. Understand and propose
 
-Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. Do not read the root `config.yaml` for this; `printer` shows the resolved profile, and the file is long and mostly comments. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan a merged 3MF next to the separate parts (scad-export, "Merged multi-object 3MF"). Infer the rest and state your assumptions.
+Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm -s scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. Do not read the root `config.yaml` for this; `printer` shows the resolved profile, and the file is long and mostly comments. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan a merged 3MF next to the separate parts (scad-export, "Merged multi-object 3MF"). Infer the rest and state your assumptions.
 
-New project: `pnpm scad new <id> [--name "Name"] [--description "..."]` (id is lowercase-dashed). `--from <other-project>` starts from a copy. Fill `workspace/<id>/brief.md` (requirements, key dimensions, parts, decisions) and give the user a short summary of the plan.
+Choose the print orientation before modelling: put the largest flat face on the bed, keep functional surfaces (sliding faces, mating faces, hooks) out of overhangs and avoid long bridges over openings. Model in exactly that orientation (see "Design the way you print" in scad-craft) and write it into `brief.md`. If no orientation works without supports or long bridges, propose splitting the part before writing code, not after the first check.
 
-Existing project: `pnpm scad list`, then `pnpm scad status <id>` and read its `brief.md` and sources before changing anything. If status shows a pending proposal or annotations from the browser, handle them first (scad-versions skill). When the user says "what I marked", "my notes" or "the pins", run `pnpm scad proposal <id>`.
+New project: `pnpm -s scad new <id> [--name "Name"] [--description "..."]` (id is lowercase-dashed). `--from <other-project>` starts from a copy. Fill `workspace/<id>/brief.md` (requirements, key dimensions, parts, decisions) and give the user a short summary of the plan.
+
+Existing project: `pnpm -s scad list`, then `pnpm -s scad status <id>` and read its `brief.md` and sources before changing anything. If status shows a pending proposal or annotations from the browser, handle them first (scad-versions skill). When the user says "what I marked", "my notes" or "the pins", run `pnpm -s scad proposal <id>`.
 
 ### 2. Show it live
 
 ```bash
-pnpm scad open <id>
+pnpm -s scad open <id>
 ```
 
 Starts the dev server in the background if needed (log: `workspace/.server.log`), then switches an already open viewer tab to the project or, if no tab is connected, opens the default browser. Mention the printed URL to the user once. Do this early, before the first real geometry, so the user sees every step.
@@ -48,7 +50,7 @@ The dev server watches `src/`, `config.yaml` and used `_libs/` files and re-rend
 Edit `workspace/<id>/src/*.scad` following scad-craft. Work in steps the user can follow: base body first, then features (holes, cutouts, ribs), then refinements (fillets, chamfers, text). After each meaningful step:
 
 ```bash
-pnpm scad render <id>
+pnpm -s scad render <id>
 ```
 
 It renders every part (through the dev server when it runs, so the viewer and you see the same result), prints per-part bounding boxes, facet counts, warnings, errors with file:line and ECHO output, then writes `preview/sheet.png`. Exit code 1 means errors: fix them before anything else. A failed part keeps showing its last good model in the viewer, with the error on top.
@@ -62,13 +64,18 @@ Read `workspace/<id>/preview/sheet.png` with the read tool after renders that ch
 For details and insides:
 
 ```bash
-pnpm scad snapshot <id> --view back|left|bottom|iso-back|...    # other angles
-pnpm scad snapshot <id> --section y=12                         # cut at y=12, keep y<=12
-pnpm scad snapshot <id> --section z=3:above --part lid         # keep the part above z=3
-pnpm scad snapshot <id> --section y=40 --view front --focus 20,40,1.5:6   # zoom in on one feature
+pnpm -s scad snapshot <id> --view back|left|bottom|iso-back|...    # other angles
+pnpm -s scad snapshot <id> --section y=12                         # cut at y=12, keep y<=12
+pnpm -s scad snapshot <id> --section z=3:above --part lid         # keep the part above z=3
+pnpm -s scad snapshot <id> --section y=40 --view front --focus 20,40,1.5:6   # zoom in on one feature
+pnpm -s scad snapshot <id> --part base -D part=assembly --section x=20   # parts fitted together, see below
 ```
 
 Snapshots land in `preview/`. Check wall thickness, hidden cavities, hole alignment and overlaps in sections.
+
+The sheet and plain snapshots draw sharp edges as dark outlines, so holes, windows and openings show even when you look straight at them. Sections and `--focus` views have no outlines; to find out whether a cut goes all the way through, take a section through it instead of more angles.
+
+`-D name=value` (repeatable) renders the selected parts with these parameter values into a throwaway model for that one image. `preview/`, `check`, the viewer and exports keep the real render. Use it for views that are not the print layout, mainly the assembled fit of a multi-part project. A part's `defines` in `config.yaml` are overridden too, so pick one part with `--part` when the value selects the whole assembly. Never edit the source to get a different view.
 
 Every snapshot frames the whole part, so a section through a flat or long part shows the cut as a thin strip. When you need to see one feature (a hole profile, a lip, a region `check` reported), add `--focus x,y,z[:radius]`: it clips the model to a cube around that point (radius 5 mm by default) and the view zooms in on it. Combine it with `--section` through the same point and a straight view (`front` for a y cut, `right` for x, `top` for z). Decide what the snapshot has to answer before taking it; if an image does not answer it, focus closer instead of trying more planes.
 
@@ -81,10 +88,10 @@ Be a harsh critic: does it match the brief, will it print without supports where
 Before every checkpoint and every export, and also right after any build step that adds thin features (ribs, lips, clips, text, shells) or downward-facing geometry (bridges, ceilings, horizontal holes, undercuts). Finding a problem in the step that caused it is cheaper than at the end:
 
 ```bash
-pnpm scad check <id>
+pnpm -s scad check <id>
 ```
 
-It analyses the rendered meshes in `preview/` (it renders first if the sources changed) against the active printer profile (`pnpm scad printer <id>`). Which checks run depends on the process. Per part, it reports PASS, WARN or FAIL for:
+It analyses the rendered meshes in `preview/` (it renders first if the sources changed) against the active printer profile (`pnpm -s scad printer <id>`). Which checks run depends on the process. Per part, it reports PASS, WARN or FAIL for:
 
 - **manifold:** open edges, non-manifold edges, flipped or inside-out faces (FAIL). Also edges folding back more than 170 deg, which are zero-thickness fins or flaps, usually from a face ending exactly on another face (WARN). Degenerate triangles are only counted.
 - **bed:** the bounding box against the build volume. FAIL if it does not fit, WARN if it only fits rotated 90 deg or the lowest point is not z = 0.
@@ -113,17 +120,17 @@ In the viewer, the user can toggle an overhang heatmap (H, islands for resin) an
 When the user's request is done and the render is clean, update `brief.md` first (one line per request under `## Changelog`, decisions, changed dimensions), then finish with one command:
 
 ```bash
-pnpm scad release <id> -m "Short description of what changed"   # check, checkpoint, export
-pnpm scad release <id> -m "..." --accept-fail                    # only for FAILs recorded under Decisions
+pnpm -s scad release <id> -m "Short description of what changed"   # check, checkpoint, export
+pnpm -s scad release <id> -m "..." --accept-fail                    # only for FAILs recorded under Decisions
 ```
 
-`release` checks (rendering first if the sources changed), stops on FAIL, otherwise checkpoints and exports the configured formats, all against the same render. Use it whenever the user wants files or the project already has exports in `out/`. When no files are wanted yet, run `pnpm scad check <id>` and `pnpm scad checkpoint <id> -m "..."` (scad-versions). Do not run `checkpoint` and `export` before `check`: the check would be missing or stale for that version.
+`release` checks (rendering first if the sources changed), stops on FAIL, otherwise checkpoints and exports the configured formats, all against the same render. Use it whenever the user wants files or the project already has exports in `out/`. When no files are wanted yet, run `pnpm -s scad check <id>` and `pnpm -s scad checkpoint <id> -m "..."` (scad-versions). Do not run `checkpoint` and `export` before `check`: the check would be missing or stale for that version.
 
 Keep the reply short, a few lines: what changed, key dimensions, the version id, the files, open WARNs or decisions, and anything the user should check in the viewer (suggest the section tool or measuring a specific distance). Explain background, alternatives or slicer advice only when the user asks for it.
 
 ### 6. Deliver
 
-When asked for files, follow scad-export (`pnpm scad release <id> -m "..."`, or `pnpm scad export <id>` when the current state is already checkpointed).
+When asked for files, follow scad-export (`pnpm -s scad release <id> -m "..."`, or `pnpm -s scad export <id>` when the current state is already checkpointed).
 
 ## The viewer, for reference when talking to the user
 
@@ -137,7 +144,11 @@ When asked for files, follow scad-export (`pnpm scad release <id> -m "..."`, or 
 
 ## Rules
 
+- Models live only in `workspace/<id>/`, shared modules in `workspace/_libs/`, third-party checkouts in `workspace/_vendor/` (scad-libs).
 - `src/*.scad` and `config.yaml` are the source of truth. Never edit `preview/`, `versions/`, `out/` or `temp/`.
-- Units are millimetres, Z is up, models sit on the XY plane (z >= 0) unless the brief says otherwise.
+- Use `pnpm -s scad` for renders, snapshots, exports, versions and libraries instead of calling OpenSCAD directly. It applies the config and library paths and keeps the viewer in sync.
+- Units are millimetres, Z is up. Each part is modelled in its print orientation and rests on z = 0; the viewer, `check` and the exported files all show exactly that.
+- Design for the active printer profile (`pnpm -s scad printer <id>`). Take clearances and minimum sizes from it, never from assumed defaults.
+- `check` before every checkpoint and export (`release` does it). Never lower thresholds to make a check pass.
 - One request, one checkpoint. Do not checkpoint broken or half-done states.
-- Do not change the viewer or tooling to make a model work; tell the user if the tooling lacks something.
+- Do not change the viewer, CLI or libraries to make a model work, and do not read their source code to find out how a feature works. If this skill and `pnpm -s scad` do not answer it, tell or ask the user.

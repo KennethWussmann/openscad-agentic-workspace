@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { resolvePaths, writeAnnotations } from '@scad/core'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -177,6 +177,22 @@ describe('with OpenSCAD', () => {
     expect(focused.data.ok).toBe(true)
     expect(focused.data.file).toMatch(/snapshot-auto-x10-below-at10_5_2\.png$/)
     expect(scad('snapshot', 'clip', '--focus', '10,5').code).toBe(2)
+    const model = path.join(workspace, 'clip', 'preview', 'main.3mf')
+    const before = readFileSync(model)
+    const defined = json<{ ok: boolean; file: string; defines: Record<string, unknown> }>(
+      'snapshot',
+      'clip',
+      '-D',
+      'width=20',
+      '-D',
+      'corner_radius=0',
+    )
+    expect(defined.data.ok).toBe(true)
+    expect(defined.data.defines).toEqual({ width: 20, corner_radius: 0 })
+    expect(defined.data.file).toMatch(/snapshot-auto-defined\.png$/)
+    expect(readFileSync(model).equals(before)).toBe(true)
+    expect(readdirSync(path.join(workspace, 'clip', 'temp')).filter((f) => f.startsWith('snapshot-'))).toEqual([])
+    expect(scad('snapshot', 'clip', '-D', 'width').code).toBe(2)
   })
 
   it('fails the check for thin walls and hints at it on checkpoint and export', () => {

@@ -1,12 +1,14 @@
 # OpenSCAD Agentic Workspace
 
-You build 3D models with OpenSCAD while the user watches them come to life in a browser viewer. All geometry comes from the OpenSCAD CLI; this repository provides the CLI wrapper (`pnpm scad`), the live viewer and the conventions.
+You build 3D models with OpenSCAD while the user watches them come to life in a browser viewer. All geometry comes from the OpenSCAD CLI; this repository provides the CLI wrapper (`pnpm -s scad`), the live viewer and the conventions.
 
 ## First thing in every session
 
-Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not available, the repository is not set up yet: follow `.agents/skills/scad-setup/SKILL.md` before doing anything else.
+Run `pnpm -s scad doctor` from the repository root. If it fails or `pnpm` is not available, the repository is not set up yet: follow `.agents/skills/scad-setup/SKILL.md` before doing anything else.
 
-## Skills
+## Designing models
+
+For every modelling request, load `.agents/skills/scad/SKILL.md` first. It is the single source for the design workflow and rules (where models live, print orientation, printer profile, checks, releases) and links the sub-skills below. Always call the CLI as `pnpm -s scad`; `-s` keeps pnpm's script header out of the output.
 
 | Skill | Load when |
 | --- | --- |
@@ -17,7 +19,11 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 | `.agents/skills/scad-versions/SKILL.md` | Checkpoints, "go back to", comparing versions, proposals the user sent from the browser: parameter values and 3D annotations (notes pinned on faces, edges and corners, with a snapshot) |
 | `.agents/skills/scad-export/SKILL.md` | Delivering files: STL, 3MF, OBJ, PNG, SVG/DXF, print preparation, merged multi-color/multi-material 3MF |
 
-## Repository layout
+## Tooling development
+
+Only relevant when the user asks you to work on the CLI, the viewer or the libraries themselves. Skip this section while designing models.
+
+Repository layout:
 
 - `apps/cli` (`pnpm scad`): deterministic commands for the agent. Run `pnpm scad` without arguments for the command reference; add `--json` for machine-readable output. One file per command group in `src/commands/`, text output in `src/format/`.
 - `apps/web`: React + three.js viewer, served by Vite. `src/components/` reusable UI pieces, `src/features/` the panels and overlays, `src/viewer/` the three.js scene, `src/store/` the zustand store.
@@ -28,12 +34,10 @@ Run `pnpm scad doctor` from the repository root. If it fails or `pnpm` is not av
 - `workspace/` (gitignored): all models. `workspace/<project>/`, shared libraries in `workspace/_libs/`, third-party checkouts in `workspace/_vendor/`.
 - `config.yaml` (gitignored, created from `config.example.yaml`): workspace settings; each project's `config.yaml` overrides them.
 
-## Rules
+Rules:
 
-- Model files live only in `workspace/<project>/`. Never put models anywhere else and never edit `preview/`, `versions/` or `out/` by hand.
-- Use `pnpm scad` for renders, exports, versions and libraries instead of calling OpenSCAD directly; it applies the config, library paths and keeps the viewer in sync.
-- Run `pnpm scad check <project>` before every checkpoint and export. `pnpm scad release <project> -m "..."` does check, checkpoint and export in that order and stops on FAIL; prefer it when finishing a request that delivers files. Fix FAILs (non-manifold, does not fit the bed, walls under the nozzle) or explain them to the user. After two failed fix attempts, ask the user. Record accepted findings in `brief.md` under Decisions so they are not raised again. Never lower thresholds to make a check pass.
-- Design for the active printer profile. `pnpm scad printer <project>` shows the process (fdm or resin), bed, nozzle or pixel size, layer height, wall limits and tolerances. Take clearances and minimum sizes from it, never from assumed defaults. Machines are defined under `printers` in `config.yaml`. `print` selects the printer, nozzle and layer height, and a project overrides it in its own `config.yaml`.
-- Do not change the viewer, CLI or libraries to make a model work. If the tooling lacks something, tell the user.
-- Development on the tooling itself: `pnpm typecheck`, `pnpm test`, `pnpm e2e`, `pnpm lint` (Biome) from the root. The tests require OpenSCAD to be installed, `pnpm e2e` also Chromium (`pnpm --filter @scad/e2e exec playwright install chromium`). Viewer changes come with unit or component tests next to the code in `apps/web/src`, user-facing flows with a Playwright spec in `apps/e2e/tests`.
-- Keep `.ts`/`.tsx` files under 500 lines; Biome fails the lint above that. Split by responsibility instead of growing a file. Code the browser needs goes into `@scad/protocol` or `@scad/geometry`, never into `@scad/core`, so the viewer never depends on Node modules.
+- `pnpm typecheck`, `pnpm test`, `pnpm e2e`, `pnpm lint` (Biome) from the root. The tests require OpenSCAD to be installed, `pnpm e2e` also Chromium (`pnpm --filter @scad/e2e exec playwright install chromium`).
+- Viewer changes come with unit or component tests next to the code in `apps/web/src`, user-facing flows with a Playwright spec in `apps/e2e/tests`.
+- Keep `.ts`/`.tsx` files under 500 lines; Biome fails the lint above that. Split by responsibility instead of growing a file.
+- Code the browser needs goes into `@scad/protocol` or `@scad/geometry`, never into `@scad/core`, so the viewer never depends on Node modules.
+- CLI changes update the command reference in `apps/cli/src/help.ts` and the skills that use the command.

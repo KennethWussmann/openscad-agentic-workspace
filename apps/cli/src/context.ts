@@ -25,6 +25,7 @@ export type Flags = {
   all?: boolean
   'accept-fail'?: boolean
   focus?: string
+  define?: string[]
 }
 
 export type Ctx = {

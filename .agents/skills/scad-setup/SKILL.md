@@ -1,11 +1,11 @@
 ---
 name: scad-setup
-description: Set up this OpenSCAD workspace repository on a new machine or fresh clone - Node.js 24+, pnpm via corepack, pnpm install, OpenSCAD installation and discovery, config.yaml - and diagnose a broken setup with `pnpm scad doctor`. Use when the user just cloned the repo, asks to set it up or install it, when `pnpm scad` fails because dependencies or pnpm are missing, when doctor reports FAIL, or when OpenSCAD cannot be found.
+description: Set up this OpenSCAD workspace repository on a new machine or fresh clone - Node.js 24+, pnpm via corepack, pnpm install, OpenSCAD installation and discovery, config.yaml - and diagnose a broken setup with `pnpm -s scad doctor`. Use when the user just cloned the repo, asks to set it up or install it, when `pnpm -s scad` fails because dependencies or pnpm are missing, when doctor reports FAIL, or when OpenSCAD cannot be found.
 ---
 
 # Setting up the workspace
 
-Goal: `pnpm scad doctor` prints `Ready.` Work through the steps in order and stop at the first one that needs the user. All commands run from the repository root.
+Goal: `pnpm -s scad doctor` prints `Ready.` Work through the steps in order and stop at the first one that needs the user. All commands run from the repository root.
 
 ## 1. Node.js 24+
 
@@ -23,12 +23,12 @@ Check with `pnpm --version`. The exact version is pinned in `package.json` (`pac
 pnpm install
 ```
 
-Run it again whenever `pnpm scad` fails with a module-not-found error or doctor reports `dependencies missing`, for example after pulling changes.
+Run it again whenever `pnpm -s scad` fails with a module-not-found error or doctor reports `dependencies missing`, for example after pulling changes.
 
 ## 4. Doctor
 
 ```bash
-pnpm scad doctor
+pnpm -s scad doctor
 ```
 
 It checks Node, dependencies, git, creates `config.yaml` from `config.example.yaml` on first run, finds OpenSCAD and reports the dev server and libraries. Every FAIL line comes with a fix.
@@ -56,6 +56,6 @@ If OpenSCAD is not found:
 ## 6. Optional checks
 
 - `git --version`: needed only for third-party libraries (see the scad-libs skill).
-- `pnpm scad serve` then `pnpm scad open`: starts the viewer and opens the browser.
+- `pnpm -s scad serve` then `pnpm -s scad open`: starts the viewer and opens the browser.
 
 When doctor prints `Ready.`, continue with the `scad` skill.

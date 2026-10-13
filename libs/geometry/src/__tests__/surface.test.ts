@@ -1,6 +1,6 @@
 import type { Vec3 } from '@scad/protocol'
 import { describe, expect, it } from 'vitest'
-import { analyzeSurface, buildTopology, describeEdge, featureEdgesNear, point } from '../index.ts'
+import { analyzeSurface, buildTopology, describeEdge, featureEdges, featureEdgesNear, point } from '../index.ts'
 
 type Tri = [Vec3, Vec3, Vec3]
 
@@ -125,5 +125,13 @@ describe('surface analysis', () => {
       ],
     ])
     expect(analyzeSurface(topo, 0)).toBeNull()
+  })
+
+  it('lists only the sharp edges of a mesh as outline segments', () => {
+    const boxEdges = featureEdges(topologyOf(box([10, 20, 5], 3)))
+    const length = boxEdges.reduce((sum, [a, b]) => sum + Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), 0)
+    expect(boxEdges).toHaveLength(36)
+    expect(length).toBeCloseTo(140)
+    expect(featureEdges(topologyOf(cylinder([0, 0, 0], 5, 10, 64)))).toHaveLength(128)
   })
 })
