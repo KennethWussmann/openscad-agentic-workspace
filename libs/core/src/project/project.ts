@@ -6,6 +6,7 @@ import { loadProjectConfig } from '../config/load.ts'
 import { printProfile } from '../config/profile.ts'
 import { hasProposals, readProposals } from '../proposals/proposals.ts'
 import { readRender } from '../render/store.ts'
+import { validateSets } from '../sets/validate.ts'
 import { listVersions } from '../versions/versions.ts'
 import { type Paths, projectLayout } from '../workspace/paths.ts'
 import { briefTemplate, mainTemplate, titleCase } from './templates.ts'
@@ -96,13 +97,16 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
 export const projectState = (paths: Paths, id: string, rendering = false, exporting = false): ProjectState => {
   const layout = requireProject(paths, id)
   const config = loadProjectConfig(paths, layout.config, id)
+  const render = readRender(paths, id, 'preview')
   return {
     id,
     name: config.meta.name,
     description: config.meta.description,
     parts: config.meta.parts,
+    sets: config.meta.sets,
+    setIssues: render ? validateSets(config.meta, render.params) : [],
     profile: printProfile(config.settings),
-    render: readRender(paths, id, 'preview'),
+    render,
     tweak: readRender(paths, id, 'tweak'),
     rendering,
     exporting,

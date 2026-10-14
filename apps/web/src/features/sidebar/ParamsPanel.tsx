@@ -1,4 +1,4 @@
-import type { ParamDef, ProjectState } from '@scad/protocol'
+import type { DefineValue, ParamDef, ProjectState } from '@scad/protocol'
 import { RotateCcw, Send } from 'lucide-react'
 import { useState } from 'react'
 import { api } from '../../api/client.ts'
@@ -10,8 +10,10 @@ import { Hint } from '../../components/Hint.tsx'
 import { IconButton } from '../../components/IconButton.tsx'
 import { Panel } from '../../components/Panel.tsx'
 import { sameJson } from '../../lib/format.ts'
+import { fmtValue } from '../../lib/sets.ts'
 import { useStore } from '../../store/store.ts'
 import { ParamInput } from './ParamInput.tsx'
+import { SetBar } from './SetBar.tsx'
 
 const groupParams = (params: ParamDef[]) => {
   const groups = new Map<string, ParamDef[]>()
@@ -22,16 +24,26 @@ const groupParams = (params: ParamDef[]) => {
   return [...groups]
 }
 
-const ParamField = ({ def }: { def: ParamDef }) => {
+const ParamField = ({ def, setValues }: { def: ParamDef; setValues: Record<string, DefineValue> }) => {
   const edits = useStore((s) => s.edits)
   const setEdit = useStore((s) => s.setEdit)
   const isEdited = def.name in edits
+  const inSet = def.name in setValues && !sameJson(setValues[def.name], def.initial)
+  const baseline = def.name in setValues ? setValues[def.name] : def.initial
   return (
-    <div className={cx('param', isEdited && 'is-edited')} title={def.caption}>
+    <div className={cx('param', isEdited && 'is-edited', inSet && 'is-set')} title={def.caption}>
       <div className="param-head">
         <span className="mono">{def.name}</span>
+        {inSet && (
+          <span className="param-default mono" title="Default from the source">
+            default {fmtValue(def.initial)}
+          </span>
+        )}
         {isEdited && (
-          <IconButton title={`Reset ${def.name}`} onClick={() => setEdit(def.name, undefined)}>
+          <IconButton
+            title={`Reset ${def.name}${def.name in setValues ? ' to the set value' : ''}`}
+            onClick={() => setEdit(def.name, undefined)}
+          >
             <RotateCcw size={12} />
           </IconButton>
         )}
@@ -40,8 +52,8 @@ const ParamField = ({ def }: { def: ParamDef }) => {
       <ParamInput
         def={def}
         label={def.name}
-        value={edits[def.name] ?? def.initial}
-        onChange={(v) => setEdit(def.name, sameJson(v, def.initial) ? undefined : v)}
+        value={edits[def.name] ?? baseline}
+        onChange={(v) => setEdit(def.name, sameJson(v, baseline) ? undefined : v)}
       />
     </div>
   )
@@ -55,10 +67,12 @@ export const ParamsPanel = ({ project }: { project: ProjectState }) => {
   const edits = useStore((s) => s.edits)
   const resetEdits = useStore((s) => s.resetEdits)
   const versionId = useStore((s) => s.versionId)
+  const activeSet = useStore((s) => s.activeSet)
   const tweakRendering = useStore((s) => s.rendering.tweak)
   const [note, setNote] = useState('')
   const params = project.render?.params ?? []
   const changed = Object.keys(edits).length
+  const values = activeSet ? (project.sets[activeSet]?.values ?? {}) : {}
   return (
     <Panel
       title="Parameters"
@@ -67,6 +81,7 @@ export const ParamsPanel = ({ project }: { project: ProjectState }) => {
       extra={changed > 0 && <Badge tone="amber">{tweakRendering ? 'rendering' : `${changed} tweaked`}</Badge>}
     >
       {versionId && <Hint>Viewing {versionId}. Tweaks apply to the working copy.</Hint>}
+      <SetBar project={project} />
       {params.length === 0 && (
         <Hint>No customizer parameters. Top-level assignments with literal values show up here.</Hint>
       )}
@@ -75,7 +90,7 @@ export const ParamsPanel = ({ project }: { project: ProjectState }) => {
           <fieldset key={group}>
             <legend>{group}</legend>
             {defs.map((def) => (
-              <ParamField key={def.name} def={def} />
+              <ParamField key={`${activeSet}:${def.name}`} def={def} setValues={values} />
             ))}
           </fieldset>
         ))}
@@ -94,14 +109,14 @@ export const ParamsPanel = ({ project }: { project: ProjectState }) => {
                 variant="ghost"
                 onClick={() => {
                   resetEdits()
-                  api.clearTweak(project.id).catch(() => undefined)
+                  if (!activeSet) api.clearTweak(project.id).catch(() => undefined)
                 }}
               >
                 <RotateCcw size={14} /> Reset
               </Button>
               <Button
                 variant="primary"
-                onClick={() => api.sendProposal(project.id, edits, note).then(() => setNote(''))}
+                onClick={() => api.sendProposal(project.id, edits, note, activeSet).then(() => setNote(''))}
               >
                 <Send size={14} /> Send to agent
               </Button>

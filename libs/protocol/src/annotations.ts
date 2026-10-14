@@ -95,6 +95,7 @@ export type AnnotationProposal = Omit<AnnotationInput, 'snapshot'> & {
 
 export type ParamProposal = {
   params: Record<string, DefineValue>
+  set?: string
   note?: string
   createdAt: string
   basedOn: string | null

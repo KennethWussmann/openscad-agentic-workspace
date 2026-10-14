@@ -1,14 +1,26 @@
-import { isDirty, listVersions, readRender, requireProject } from '@scad/core'
+import {
+  isDirty,
+  listVersions,
+  loadProjectConfig,
+  readRender,
+  requireProject,
+  requireSet,
+  validateSets,
+} from '@scad/core'
 import { type Ctx, need, type Outcome, partsFlag, settingsFor } from '../context.ts'
 import { formatDiagnostic, table } from '../format/common.ts'
 import { formatRender } from '../format/render.ts'
+import { formatSetIssues, formatValues } from '../format/sets.ts'
 import { viewerUrl } from '../server.ts'
 import { renderViaServerOrLocal, sheetFor } from './rendering.ts'
 
 export const render = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
-  requireProject(paths, project)
-  const { result, server } = await renderViaServerOrLocal(paths, project, partsFlag(flags))
+  const layout = requireProject(paths, project)
+  const { meta } = loadProjectConfig(paths, layout.config, project)
+  const set = flags.set ? requireSet(meta, flags.set) : null
+  const { result, server } = await renderViaServerOrLocal(paths, project, partsFlag(flags), set?.name)
+  const setIssues = validateSets(meta, result.params)
   const wantSheet = flags.sheet ?? settingsFor(paths, project).render.sheet
   const sheet = wantSheet && result.parts.some((p) => p.model) ? await sheetFor(paths, project, result) : null
   const dirty = isDirty(paths, project)
@@ -20,8 +32,11 @@ export const render = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
     viewer: server ? viewerUrl(server.port, project) : null,
     latestVersion: latest?.id ?? null,
     changedSinceVersion: dirty,
+    setIssues,
   }
   const lines = [formatRender(result)]
+  if (set) lines.push(`  set ${set.name}: ${formatValues(set.def.values)}`)
+  lines.push(...formatSetIssues(setIssues))
   if (sheet?.sheet) lines.push(`  sheet: ${sheet.sheet}  (2x2: iso | front / right | top)`)
   for (const d of sheet?.diagnostics ?? []) lines.push(`  sheet ${formatDiagnostic(d)}`)
   lines.push(

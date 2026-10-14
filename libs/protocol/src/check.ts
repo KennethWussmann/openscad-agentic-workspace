@@ -84,6 +84,7 @@ export type PartCheck = {
 
 export type CheckResult = {
   project: string
+  set?: string
   status: CheckStatus
   checkedAt: string
   render: string

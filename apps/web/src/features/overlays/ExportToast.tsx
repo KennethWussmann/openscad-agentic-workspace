@@ -58,6 +58,9 @@ export const ExportToast = () => {
           ))}
         </ul>
       )}
+      {result?.sets.some((set) => set !== 'default') && (
+        <p className="export-meta mono">set: {result.sets.join(', ')}</p>
+      )}
       {result && Object.keys(result.overrides).length > 0 && (
         <p className="export-meta mono">
           tweaks:{' '}

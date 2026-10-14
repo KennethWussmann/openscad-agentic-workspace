@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { project, version } from '../test/fixtures.ts'
+import { project, renderResult, version } from '../test/fixtures.ts'
 import { DISPLAY_KEY, SIDEBAR_KEY } from './persist.ts'
-import { useStore } from './store.ts'
+import { selectOverrides, useStore } from './store.ts'
 
 const s = () => useStore.getState()
 
@@ -35,6 +35,28 @@ describe('projects', () => {
     expect(s().edits).toEqual({ width: 30 })
     expect(s().rendering.preview).toBe(true)
     expect(s().fitToken).toBe(fit)
+  })
+
+  it('selects sets as the tweak baseline and folds a vanished set into plain edits', () => {
+    const params = [
+      { name: 'width', type: 'number' as const, initial: 20 },
+      { name: 'depth', type: 'number' as const, initial: 10 },
+    ]
+    const withSet = project({
+      sets: { tray: { values: { width: 40, depth: 10 }, export: false } },
+      render: renderResult({ params }),
+    })
+    s().setProject(withSet)
+    s().setEdit('width', 30)
+    s().selectSet('tray')
+    expect(s()).toMatchObject({ activeSet: 'tray', edits: {} })
+    expect(selectOverrides(s())).toEqual({ width: 40, depth: 10 })
+    s().setEdit('depth', 12)
+    expect(selectOverrides(s())).toEqual({ width: 40, depth: 12 })
+    s().setProject({ ...withSet, sets: {} })
+    expect(s()).toMatchObject({ activeSet: null, edits: { width: 40, depth: 12 } })
+    s().setProject(project({ id: 'other' }))
+    expect(s().activeSet).toBeNull()
   })
 
   it('drops a selected version or ghost that no longer exists', () => {

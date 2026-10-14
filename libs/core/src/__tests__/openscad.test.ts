@@ -28,7 +28,7 @@ describe('with OpenSCAD', () => {
     write(path.join(paths.libs, 'shapes', 'shapes.scad'), 'module plate(s) { cube([s, s, 2]); }\n')
     writeFileSync(
       layout.config,
-      'name: Kit\nparts:\n  - id: base\n    defines: { part: "base" }\n  - id: lid\n    defines: { part: "lid" }\n',
+      'name: Kit\nparts:\n  - id: base\n    defines: { part: "base" }\n  - id: lid\n    defines: { part: "lid" }\nsets:\n  big:\n    values: { size: 40, part: "lid" }\n    export: true\n  big-lid:\n    values: { size: 30 }\n    parts: [lid]\n',
     )
     writeFileSync(
       path.join(layout.src, 'main.scad'),
@@ -144,5 +144,39 @@ describe('with OpenSCAD', () => {
     expect(exported.meshCheck?.parts.map((p) => [p.id, p.bbox?.size])).toEqual([['base', [30, 30, 2]]])
     const record = JSON.parse(readFileSync(path.join(projectLayout(paths, 'kit').out, 'export.json'), 'utf8'))
     expect(record).toMatchObject({ version: 'tweaked', overrides: { size: 30 } })
+  })
+
+  it('renders, checks and exports parameter sets next to the default model', async () => {
+    const layout = projectLayout(paths, 'kit')
+    const big = await renderProject({ paths, project: 'kit', openscad, set: 'big' })
+    expect(big.set).toBe('big')
+    expect(big.parts.map((p) => [p.id, p.model, p.bbox?.size])).toEqual([
+      ['base', 'preview/sets/big/base.3mf', [40, 40, 2]],
+      ['lid', 'preview/sets/big/lid.3mf', [20, 20, 2]],
+    ])
+    expect(readRender(paths, 'kit')?.parts[0].bbox?.size).toEqual([20, 20, 2])
+    const lidOnly = await renderProject({ paths, project: 'kit', openscad, set: 'big-lid' })
+    expect(lidOnly.parts.map((p) => [p.id, p.bbox?.size])).toEqual([['lid', [15, 15, 2]]])
+    const checked = checkProject(paths, 'kit', undefined, 'big')
+    expect(checked.set).toBe('big')
+    expect(readCheck(paths, 'kit', 'big')?.parts[0].bbox?.size).toEqual([40, 40, 2])
+    expect(existsSync(path.join(layout.preview, 'check-big.json'))).toBe(true)
+    expect(checkState(paths, 'kit', 'big').status).toBe(checked.status)
+    const exported = await exportProject({
+      paths,
+      project: 'kit',
+      openscad,
+      formats: ['3mf'],
+      sets: ['default', 'big', 'big-lid'],
+    })
+    expect(exported.sets).toEqual(['default', 'big', 'big-lid'])
+    expect(exported.files.map((f) => [f.set, f.file, f.ok])).toEqual([
+      ['default', 'out/kit-base.3mf', true],
+      ['default', 'out/kit-lid.3mf', true],
+      ['big', 'out/kit-base-big.3mf', true],
+      ['big', 'out/kit-lid-big.3mf', true],
+      ['big-lid', 'out/kit-lid-big-lid.3mf', true],
+    ])
+    await expect(exportProject({ paths, project: 'kit', openscad, sets: ['nope'] })).rejects.toThrow(/Unknown set/)
   })
 })

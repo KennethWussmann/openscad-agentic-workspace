@@ -2071,3 +2071,228 @@ button.note-balloon:hover {
   color: var(--red);
   background: #3a1715;
 }
+
+.setbar {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--panel-2), transparent 160%);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.setbar.is-set {
+  border-color: var(--cyan-dim);
+  box-shadow: inset 2px 0 0 var(--cyan);
+}
+
+.setbar-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.setbar-row:has(> :nth-child(2):last-child) {
+  grid-template-columns: auto 1fr;
+}
+
+.setbar-tag {
+  padding: 3px 6px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--cyan);
+  border: 1px solid var(--cyan-dim);
+  border-radius: 2px;
+  background: repeating-linear-gradient(135deg, #5ad1e61a 0 2px, transparent 2px 5px);
+}
+
+.setbar-select {
+  position: relative;
+  min-width: 0;
+}
+
+.setbar-select select {
+  appearance: none;
+  width: 100%;
+  padding: 5px 26px 5px 8px;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-stretch: 85%;
+  outline: none;
+  text-overflow: ellipsis;
+}
+
+.setbar-select select:focus {
+  border-color: var(--cyan-dim);
+}
+
+.setbar-select svg {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dim);
+  pointer-events: none;
+}
+
+.setbar-row .icon-btn {
+  width: 24px;
+  height: 24px;
+}
+
+.setbar-row .icon-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.setbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.setbar-name {
+  color: var(--cyan);
+}
+
+.setbar-flag {
+  padding: 0 5px;
+  border: 1px solid #7fcf7a55;
+  border-radius: 2px;
+  color: var(--green);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.setbar .hint {
+  margin: 0;
+}
+
+.setbar-issue {
+  display: block;
+}
+
+.setbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.setbar .btn {
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.setbar-confirm {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  animation: rise 0.18s ease-out both;
+}
+
+.setbar-confirm strong {
+  color: var(--ink);
+}
+
+.btn.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.btn.danger:hover {
+  background: #ff6b5e1a;
+}
+
+.set-form {
+  display: grid;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--rule-2);
+  animation: rise 0.18s ease-out both;
+}
+
+.set-field {
+  display: grid;
+  gap: 3px;
+}
+
+.set-field > span {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+}
+
+.set-field input {
+  width: 100%;
+  padding: 5px 7px;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  outline: none;
+}
+
+.set-field input:focus {
+  border-color: var(--cyan-dim);
+}
+
+.set-field input[aria-invalid="true"] {
+  border-color: var(--red);
+}
+
+.set-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.set-check input {
+  margin: 0;
+  accent-color: var(--green);
+}
+
+.set-form-error {
+  margin: 0;
+  color: var(--red);
+  font-size: 11px;
+}
+
+.param.is-set {
+  border-left-color: var(--cyan);
+  background: linear-gradient(90deg, #5ad1e60d, transparent);
+}
+
+.param.is-set.is-edited {
+  border-left-color: var(--amber);
+  background: linear-gradient(90deg, #f2a5410f, transparent);
+}
+
+.param-head:has(.param-default) {
+  gap: 6px;
+}
+
+.param-default {
+  margin-left: auto;
+  font-size: 9.5px;
+  color: var(--dim);
+  white-space: nowrap;
+}

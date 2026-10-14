@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { clearProposals, readProposals, readRender, requireProject, sameValue } from '@scad/core'
+import { clearProposals, loadProjectConfig, readProposals, readRender, requireProject, sameValue } from '@scad/core'
 import { type Ctx, need, type Outcome, rel } from '../context.ts'
 import { formatAnnotations } from '../format/annotations.ts'
 import { table } from '../format/common.ts'
@@ -19,16 +19,21 @@ export const proposal = async ({ paths, flags, args }: Ctx): Promise<Outcome> =>
   if (pending.params) {
     const p = pending.params
     const current = readRender(paths, project)?.params ?? []
+    const base = p.set ? loadProjectConfig(paths, layout.config, project).meta.sets[p.set] : undefined
     const changes = Object.entries(p.params).map(([name, value]) => {
-      const def = current.find((c) => c.name === name)
-      return { name, from: def?.initial ?? null, to: value, unchanged: def ? sameValue(def.initial, value) : false }
+      const from =
+        base && name in base.values ? base.values[name] : (current.find((c) => c.name === name)?.initial ?? null)
+      return { name, from, to: value, unchanged: from !== null && sameValue(from, value) }
     })
-    const rows = [['PARAM', 'CURRENT', 'PROPOSED']]
+    const rows = [['PARAM', p.set ? `SET ${p.set}` : 'CURRENT', 'PROPOSED']]
     for (const c of changes)
       rows.push([c.name, JSON.stringify(c.from), `${JSON.stringify(c.to)}${c.unchanged ? ' (same)' : ''}`])
     params = { ...p, changes }
+    const advice = p.set
+      ? `Tweaked on top of set ${p.set}${base ? '' : ' (no longer in config.yaml)'}. Decide from the note: update the set (\`pnpm scad set save ${project} ${p.set} -D ...\`), save a new set, or port the values into the .scad defaults.`
+      : 'Port the values into the .scad defaults, unless the note asks for a variant: then save a set (`pnpm scad set save`).'
     blocks.push(
-      `Parameters from the browser (${p.createdAt}, based on ${p.basedOn ?? 'no version'})${p.note ? `\nNote: ${p.note}` : ''}\n${table(rows)}\nPort the values into the .scad defaults.`,
+      `Parameters from the browser (${p.createdAt}, based on ${p.basedOn ?? 'no version'})${p.note ? `\nNote: ${p.note}` : ''}\n${table(rows)}\n${advice}`,
     )
   }
   let annotations = null

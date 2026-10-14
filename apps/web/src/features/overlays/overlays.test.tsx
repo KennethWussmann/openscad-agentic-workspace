@@ -106,6 +106,14 @@ describe('TitleBlock', () => {
     expect(cell('Overlay')).toHaveTextContent('v2')
   })
 
+  it('names the selected set until it is tweaked', () => {
+    useStore.setState({ activeSet: 'tray' })
+    render(<TitleBlock project={project()} />)
+    expect(cell('Showing')).toHaveTextContent('SET tray')
+    act(() => useStore.getState().setEdit('width', 30))
+    expect(cell('Showing')).toHaveTextContent('TWEAK')
+  })
+
   it('shows assemblies and soloed parts', () => {
     const assembly = project({ parts: [partDef({ id: 'lid' }), partDef({ id: 'base' })] })
     render(<TitleBlock project={assembly} />)

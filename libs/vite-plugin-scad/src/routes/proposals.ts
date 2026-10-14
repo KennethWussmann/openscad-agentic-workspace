@@ -21,10 +21,12 @@ const latestVersion = (ctx: ServerContext, id: string) => projectState(ctx.paths
 const relative = (ctx: ServerContext, file: string) => toPosix(path.relative(ctx.paths.root, file))
 
 export const sendProposalRoute = async (ctx: ServerContext, req: Req, res: Res, id: string) => {
-  const body = (await readBody(req)) as { params?: Record<string, DefineValue>; note?: string }
+  const body = (await readBody(req)) as { params?: Record<string, DefineValue>; note?: string; set?: unknown }
   if (!body.params || !Object.keys(body.params).length) return json(res, 400, { error: 'no params' })
+  const set = typeof body.set === 'string' && body.set in projectState(ctx.paths, id).sets ? body.set : null
   writeParamProposal(ctx.paths, id, {
     params: body.params,
+    ...(set ? { set } : {}),
     ...(body.note ? { note: body.note } : {}),
     createdAt: new Date().toISOString(),
     basedOn: latestVersion(ctx, id),

@@ -2,6 +2,7 @@ import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import type { PrintProfile, ProjectState } from '@scad/protocol'
 import { useCallback, useEffect, useMemo } from 'react'
 import { Box3, Vector3 } from 'three'
+import { useOverrides } from '../hooks/useOverrides.ts'
 import { useStore } from '../store/store.ts'
 import { useAnalysis } from './analysis/useAnalysis.ts'
 import { CameraRig } from './camera/CameraRig.tsx'
@@ -23,7 +24,7 @@ import { useSectionSync } from './section/useSectionSync.ts'
 export const Viewport = ({ project }: { project: ProjectState }) => {
   const versionId = useStore((s) => s.versionId)
   const ghostId = useStore((s) => s.ghostId)
-  const edits = useStore((s) => s.edits)
+  const overrides = useOverrides()
   const hidden = useStore((s) => s.hidden)
   const solo = useStore((s) => s.solo)
   const display = useStore((s) => s.display)
@@ -38,7 +39,7 @@ export const Viewport = ({ project }: { project: ProjectState }) => {
   const setBounds = useStore((s) => s.setBounds)
   const setAnalysis = useStore((s) => s.setAnalysis)
 
-  const source = modelSource(project, versionId, Object.keys(edits).length > 0)
+  const source = modelSource(project, versionId, Object.keys(overrides).length > 0)
   const ghostSource = ghostId ? modelSource(project, ghostId, false) : null
   const { models } = useModels(modelRequests(project.id, source))
   const { models: ghosts } = useModels(modelRequests(project.id, ghostSource, 'ghost:'))
@@ -77,10 +78,10 @@ export const Viewport = ({ project }: { project: ProjectState }) => {
         if (p) addPoint(p.toArray())
         return
       }
-      const note = pickNote(e, sectionOn, project.parts, annotationSource(project, versionId, edits))
+      const note = pickNote(e, sectionOn, project.parts, annotationSource(project, versionId, overrides))
       if (note) addNote(note)
     },
-    [tool, embed, sectionOn, addPoint, addNote, project, versionId, edits],
+    [tool, embed, sectionOn, addPoint, addNote, project, versionId, overrides],
   )
 
   return (

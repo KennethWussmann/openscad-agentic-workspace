@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { createProject, resolvePaths } from '@scad/core'
-import { API, APP_ID, type ExportResult } from '@scad/protocol'
+import { API, APP_ID, type ExportResult, type ProjectState, type SetsResponse } from '@scad/protocol'
 import { createServer, type ViteDevServer } from 'vite'
 import { afterAll, beforeAll, expect, it } from 'vitest'
 import { scadWorkspace } from './index.ts'
@@ -151,4 +151,36 @@ it('exports 3MF with a mesh check, tweaked files separately, one export at a tim
   expect(tweaked.files.map((f) => f.file)).toEqual(['out/box-main-tweaked.3mf'])
   const record = JSON.parse(readFileSync(path.join(workspace, 'box', 'out', 'export.json'), 'utf8')) as ExportResult
   expect(record.overrides).toEqual({ width: 30 })
+})
+
+const postJson = (route: string, body: unknown) =>
+  fetch(`${url}${route}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+it('saves, validates, exports and deletes parameter sets', async () => {
+  expect((await postJson('/projects/box/render', {})).status).toBe(200)
+  const bad = await postJson('/projects/box/sets', { name: 'wide', values: { width: 900 } })
+  expect(bad.status).toBe(400)
+  expect(((await bad.json()) as { error: string }).error).toMatch(/width: 900 is above the maximum 200/)
+  expect((await postJson('/projects/box/sets', { name: 'default', values: { width: 50 } })).status).toBe(400)
+  const saved = await postJson('/projects/box/sets', { name: 'wide', label: 'Wide', values: { width: 60 } })
+  expect(saved.status).toBe(200)
+  expect(((await saved.json()) as SetsResponse).sets).toEqual({
+    wide: { label: 'Wide', values: { width: 60 }, export: false },
+  })
+  expect(readFileSync(path.join(workspace, 'box', 'config.yaml'), 'utf8')).toContain('values: { width: 60 }')
+  const state = (await (await fetch(`${url}/projects/box`)).json()) as ProjectState
+  expect(Object.keys(state.sets)).toEqual(['wide'])
+  expect(state.setIssues).toEqual([])
+  expect((await postExport('box', { set: 'nope' })).status).toBe(400)
+  const exported = (await (await postExport('box', { set: 'wide' })).json()) as ExportResult
+  expect(exported.sets).toEqual(['wide'])
+  expect(exported.files.map((f) => f.file)).toEqual(['out/box-main-wide.3mf'])
+  expect(exported.meshCheck?.parts[0].bbox?.size[0]).toBeCloseTo(60)
+  expect((await fetch(`${url}/projects/box/sets/nope`, { method: 'DELETE' })).status).toBe(404)
+  const removed = await fetch(`${url}/projects/box/sets/wide`, { method: 'DELETE' })
+  expect(((await removed.json()) as SetsResponse).sets).toEqual({})
 })

@@ -4,12 +4,15 @@ import path from 'node:path'
 
 export const sha1 = (file: string) => createHash('sha1').update(readFileSync(file)).digest('hex')
 
-export const writeJsonAtomic = (file: string, data: unknown) => {
+export const writeTextAtomic = (file: string, text: string) => {
   mkdirSync(path.dirname(file), { recursive: true })
   const tmp = `${file}.${randomBytes(4).toString('hex')}.tmp`
-  writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`)
+  writeFileSync(tmp, text)
   renameSync(tmp, file)
 }
+
+export const writeJsonAtomic = (file: string, data: unknown) =>
+  writeTextAtomic(file, `${JSON.stringify(data, null, 2)}\n`)
 
 export const readJson = <T>(file: string): T | null => {
   try {

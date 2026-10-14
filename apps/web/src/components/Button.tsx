@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
 type ButtonProps = {
-  variant: 'primary' | 'ghost'
+  variant: 'primary' | 'ghost' | 'danger'
   onClick: () => void
   disabled?: boolean
   title?: string

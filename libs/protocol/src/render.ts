@@ -59,6 +59,7 @@ export type InputFile = {
 
 export type RenderResult = {
   project: string
+  set?: string
   status: 'ok' | 'error'
   error?: string
   startedAt: string

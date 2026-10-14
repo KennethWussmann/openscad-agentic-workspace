@@ -4,7 +4,7 @@ import type { Paths } from '../workspace/paths.ts'
 import { type ProjectConfig, ProjectMetaSchema, type Settings, SettingsSchema } from './schema.ts'
 import { deepMerge, type Plain, readYaml, setYamlValue } from './yaml.ts'
 
-const META_KEYS = ['name', 'description', 'parts'] as const
+const META_KEYS = ['name', 'description', 'parts', 'sets'] as const
 
 const formatIssues = (file: string, error: z.ZodError) =>
   `Invalid config in ${file}:\n${error.issues.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`).join('\n')}`
@@ -54,8 +54,15 @@ export const loadSettings = (paths: Paths): Settings => {
   return parsed.data
 }
 
-export const loadProjectConfig = (paths: Paths, projectConfigFile: string, fallbackName: string): ProjectConfig => {
-  const raw = readYaml(projectConfigFile)
+export const loadProjectConfig = (paths: Paths, projectConfigFile: string, fallbackName: string): ProjectConfig =>
+  parseProjectConfig(paths, readYaml(projectConfigFile), projectConfigFile, fallbackName)
+
+export const parseProjectConfig = (
+  paths: Paths,
+  raw: Plain,
+  projectConfigFile: string,
+  fallbackName: string,
+): ProjectConfig => {
   const metaRaw: Plain = { name: fallbackName }
   const overrides: Plain = {}
   for (const [key, value] of Object.entries(raw)) {

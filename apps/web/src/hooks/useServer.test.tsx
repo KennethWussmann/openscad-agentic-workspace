@@ -92,7 +92,7 @@ describe('live events', () => {
   })
 
   it('shows the result of exports of the open project', () => {
-    act(() => on().onExportStart({ project: 'box', tweaked: false }))
+    act(() => on().onExportStart({ project: 'box', tweaked: false, set: null }))
     expect(s().exporting).toBe(true)
     act(() => on().onExport({ project: 'box', result: null, error: 'OpenSCAD failed' }))
     expect(s().exporting).toBe(false)

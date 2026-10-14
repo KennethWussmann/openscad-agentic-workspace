@@ -14,18 +14,21 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
   const versionId = useStore((s) => s.versionId)
   const ghostId = useStore((s) => s.ghostId)
   const edits = useStore((s) => s.edits)
+  const activeSet = useStore((s) => s.activeSet)
   const bounds = useStore((s) => s.bounds)
   const solo = useStore((s) => s.solo)
   const tweaked = Object.keys(edits).length > 0 && !versionId
+  const onSet = Boolean(activeSet) && !tweaked && !versionId
   const size = bounds ? bounds[1].map((v, i) => v - bounds[0][i]) : null
-  const showing = versionId ?? (tweaked ? 'TWEAK' : project.versions.length ? 'WIP' : 'DRAFT')
+  const showing =
+    versionId ?? (tweaked ? 'TWEAK' : onSet ? `SET ${activeSet}` : project.versions.length ? 'WIP' : 'DRAFT')
   return (
     <div className="titleblock">
       <Cell label="Project" wide>
         <strong>{project.name}</strong>
       </Cell>
       <Cell label="Showing">
-        <span className={`mono ${tweaked ? 'amber' : ''}`}>{showing}</span>
+        <span className={`mono ${tweaked ? 'amber' : onSet ? 'cyan' : ''}`}>{showing}</span>
       </Cell>
       <Cell label="Overlay">
         <span className="mono cyan">{ghostId ?? '-'}</span>

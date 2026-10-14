@@ -4,13 +4,14 @@ import type { InputFile, RenderKind, RenderResult } from '@scad/protocol'
 import { readJson, sha1 } from '../fs/json.ts'
 import { type Paths, projectLayout, toPosix } from '../workspace/paths.ts'
 
-export const renderDir = (paths: Paths, project: string, kind: RenderKind) => {
+export const renderDir = (paths: Paths, project: string, kind: RenderKind, set?: string | null) => {
   const layout = projectLayout(paths, project)
-  return kind === 'preview' ? layout.preview : layout.tweak
+  if (kind === 'tweak') return layout.tweak
+  return set ? path.join(layout.preview, 'sets', set) : layout.preview
 }
 
-export const readRender = (paths: Paths, project: string, kind: RenderKind = 'preview') =>
-  readJson<RenderResult>(path.join(renderDir(paths, project, kind), 'render.json'))
+export const readRender = (paths: Paths, project: string, kind: RenderKind = 'preview', set?: string | null) =>
+  readJson<RenderResult>(path.join(renderDir(paths, project, kind, set), 'render.json'))
 
 export const inputEntry = (paths: Paths, file: string): InputFile | null =>
   existsSync(file) ? { path: toPosix(path.relative(paths.workspace, file)), sha: sha1(file) } : null

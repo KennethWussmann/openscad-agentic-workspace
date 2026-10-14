@@ -12,15 +12,18 @@ import {
   type Paths,
   printProfile,
   projectLayout,
+  readRender,
   resolveOpenscad,
   type Settings,
+  validateSets,
 } from '@scad/core'
 import { errorMessage } from '@scad/protocol'
 import { type Ctx, type Outcome, rel, serverFor } from '../context.ts'
 import { formatProfile } from '../format/profile.ts'
+import { formatSetIssues } from '../format/sets.ts'
 import { viewerUrl } from '../server.ts'
 
-type Check = { name: string; ok: boolean; detail: string; fix?: string }
+type Check = { name: string; ok: boolean; warn?: boolean; detail: string; fix?: string }
 
 const MIN_OPENSCAD_YEAR = 2024
 
@@ -73,9 +76,17 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     ok: true,
     detail: `${formatProfile(printer)}${others.length ? `  (also: ${others.join(', ')})` : ''}`,
   })
+  const setWarnings: string[] = []
+  let setCount = 0
   const invalid = listProjects(paths).flatMap((p) => {
     try {
-      loadProjectConfig(paths, projectLayout(paths, p.id).config, p.id)
+      const { meta } = loadProjectConfig(paths, projectLayout(paths, p.id).config, p.id)
+      const names = Object.keys(meta.sets)
+      setCount += names.length
+      const render = readRender(paths, p.id)
+      if (names.length && !render) setWarnings.push(`${p.id}: not rendered yet, sets not validated`)
+      if (render)
+        setWarnings.push(...formatSetIssues(validateSets(meta, render.params), '').map((w) => `${p.id}: ${w}`))
       return []
     } catch (e) {
       return [errorMessage(e)]
@@ -87,6 +98,16 @@ export const doctor = async ({ paths }: Ctx): Promise<Outcome> => {
     detail: invalid.length ? `${invalid.length} project config(s) invalid` : 'all project configs valid',
     ...(invalid.length ? { fix: invalid.join('\n') } : {}),
   })
+  if (setCount)
+    checks.push({
+      name: 'sets',
+      ok: true,
+      warn: setWarnings.length > 0,
+      detail: setWarnings.length
+        ? `${setWarnings.length} warning(s) in ${setCount} parameter set(s), checked against the last render`
+        : `${setCount} parameter set(s) match their parameters`,
+      ...(setWarnings.length ? { fix: setWarnings.join('\n') } : {}),
+    })
   let openscad: { command: string[]; version: string; source: string } | null = null
   try {
     openscad = await resolveOpenscad(paths)
@@ -128,7 +149,7 @@ const doctorOutcome = (paths: Paths, checks: Check[], extra: Record<string, unkn
   const text = [
     ...checks.map(
       (c) =>
-        `${c.ok ? 'ok  ' : 'FAIL'}  ${c.name.padEnd(12)} ${c.detail}${!c.ok && c.fix ? `\n      -> ${c.fix.replace(/\n/g, '\n         ')}` : ''}`,
+        `${c.ok ? (c.warn ? 'WARN' : 'ok  ') : 'FAIL'}  ${c.name.padEnd(12)} ${c.detail}${(!c.ok || c.warn) && c.fix ? `\n      -> ${c.fix.replace(/\n/g, '\n         ')}` : ''}`,
     ),
     `      ${'workspace'.padEnd(12)} ${paths.workspace}`,
     ok ? '\nReady.' : '\nFix the FAIL items above, then run `pnpm scad doctor` again.',

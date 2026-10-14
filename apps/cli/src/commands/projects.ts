@@ -50,6 +50,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     project,
     name: config.meta.name,
     parts: config.meta.parts,
+    sets: config.meta.sets,
     render: result,
     latestVersion: list.at(-1)?.id ?? null,
     changedSinceVersion: isDirty(paths, project),
@@ -64,6 +65,11 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     `  printer: ${formatProfile(printProfile(config.settings))}`,
     `  check: ${printCheck.status === 'missing' ? 'not run yet' : printCheck.status === 'stale' ? `outdated (was ${printCheck.result?.status})` : printCheck.status}${printCheck.status === 'pass' ? '' : ` (\`pnpm scad check ${project}\`)`}`,
   ]
+  const setNames = Object.keys(config.meta.sets)
+  if (setNames.length)
+    lines.push(
+      `  sets: ${setNames.map((n) => `${n}${config.meta.sets[n].export ? ' (export)' : ''}`).join(', ')}  (\`pnpm scad sets ${project}\`)`,
+    )
   if (proposals.params)
     lines.push(
       `  PROPOSAL pending from the browser: ${Object.keys(proposals.params.params).join(', ')} (see \`pnpm scad proposal ${project}\`)`,

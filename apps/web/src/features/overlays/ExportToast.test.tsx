@@ -11,9 +11,10 @@ const result = (overrides: Partial<ExportResult> = {}): ExportResult => ({
   outDir: 'workspace/box/out',
   exportedAt: '2026-01-01T10:00:00.000Z',
   overrides: {},
+  sets: ['default'],
   files: [
-    { part: 'main', format: '3mf', file: 'out/box-main.3mf', ok: true, diagnostics: [] },
-    { part: 'main', format: 'stl', file: 'out/box-main.stl', ok: true, diagnostics: [] },
+    { part: 'main', set: 'default', format: '3mf', file: 'out/box-main.3mf', ok: true, diagnostics: [] },
+    { part: 'main', set: 'default', format: 'stl', file: 'out/box-main.stl', ok: true, diagnostics: [] },
   ],
   meshCheck: null,
   ...overrides,
@@ -64,6 +65,7 @@ it('keeps failures open and explains them', () => {
   const files = [
     {
       part: 'main',
+      set: 'default',
       format: 'stl' as const,
       file: 'out/box-main.stl',
       ok: false,

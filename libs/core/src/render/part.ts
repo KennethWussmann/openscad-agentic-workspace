@@ -6,6 +6,7 @@ import { readJson } from '../fs/json.ts'
 import { parseDiagnostics } from '../openscad/diagnostics.ts'
 import type { Openscad } from '../openscad/discovery.ts'
 import { baseArgs, defineArgs, parseDepsFile, runOpenscad } from '../openscad/run.ts'
+import { type ActiveSet, effectiveDefines } from '../sets/sets.ts'
 import { type Paths, toPosix } from '../workspace/paths.ts'
 
 type Summary = {
@@ -41,6 +42,7 @@ export type PartContext = {
   dir: string
   work: string
   outDir: string
+  set: ActiveSet | null
   overrides: Record<string, DefineValue>
   deps: Set<string>
 }
@@ -65,7 +67,7 @@ export const renderPart = async (ctx: PartContext, part: PartDef, previous: Part
   const tmpModel = path.join(work, `${part.id}.3mf`)
   const summaryFile = path.join(work, `${part.id}.summary.json`)
   const depsFile = path.join(work, `${part.id}.deps`)
-  const defines = { ...config.settings.render.defines, ...ctx.overrides, ...part.defines }
+  const defines = effectiveDefines(config.settings, ctx.set, ctx.overrides, part)
   const run = await runOpenscad({
     command: ctx.openscad.command,
     args: [

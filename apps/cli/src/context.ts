@@ -1,5 +1,14 @@
 import path from 'node:path'
-import { loadProjectConfig, loadSettings, type Paths, projectLayout, type Settings, toPosix } from '@scad/core'
+import {
+  loadProjectConfig,
+  loadSettings,
+  type Paths,
+  parseDefineInput,
+  projectLayout,
+  type Settings,
+  toPosix,
+} from '@scad/core'
+import type { DefineValue } from '@scad/protocol'
 import { findServer } from './server.ts'
 
 export type Flags = {
@@ -26,6 +35,11 @@ export type Flags = {
   'accept-fail'?: boolean
   focus?: string
   define?: string[]
+  set?: string
+  sets?: string
+  label?: string
+  export?: boolean
+  replace?: boolean
 }
 
 export type Ctx = {
@@ -55,3 +69,12 @@ export const partsFlag = (flags: Flags) =>
 export const rel = (paths: Paths, file: string) => toPosix(path.relative(paths.root, file))
 
 export const serverFor = async (paths: Paths) => findServer(paths, loadSettings(paths).server.port)
+
+export const parseDefines = (raw: string[] = []) =>
+  Object.fromEntries(
+    raw.map((entry) => {
+      const m = entry.match(/^\s*(\$?[A-Za-z_]\w*)\s*=(.*)$/)
+      if (!m) throw new UsageError('-D expects name=value, e.g. -D part=assembly or -D width=40')
+      return [m[1], parseDefineInput(m[2])]
+    }),
+  ) as Record<string, DefineValue>

@@ -135,7 +135,7 @@ export const formatCheckPart = (p: PartCheck, s: PrintProfile, all = false) => {
 
 export const formatCheck = (r: CheckResult, all = false) => {
   return [
-    `${LABEL[r.status]}  ${r.project}  ${formatProfile(r.profile)}`,
+    `${LABEL[r.status]}  ${r.project}${r.set ? `  set ${r.set}` : ''}  ${formatProfile(r.profile)}`,
     ...r.parts.map((p) => formatCheckPart(p, r.profile, all)),
   ].join('\n')
 }
