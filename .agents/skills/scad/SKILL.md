@@ -102,7 +102,7 @@ It analyses the rendered meshes in `preview/` (it renders first if the sources c
 
 Overhang and wall regions with the same thickness or angle, area and size are grouped into one line (`8 x 0.59 mm, 2.01 mm2 each, size ..., around (..), (..)`), typically repeated features such as engraved digits or a row of ribs. The first 5 groups are listed; `--all` lists every group. Use `--all` instead of parsing `check.json` by hand.
 
-`preview/check.json` (also printed by `--json`) has this shape: `{ project, status, checkedAt, render, profile, parts: [...] }`. Each part has `id`, `status`, `triangles`, `bbox` and one object per check: `manifold` (`openEdges`, `nonManifoldEdges`, `flippedEdges`, `degenerate`, `inverted`, `samples`, `foldedEdges`, `folds`), `bed` (`size`, `bed`, `fits`, `fitsRotated`, `minZ`), `overhangs` and `walls` (`area`, `worst`, `regions`), `islands` (`count`, `islands`, resin only), `bodies` (`bodies`, `voids`, `floating`, `small`). Every check has a `status`. A region is `{ area, bbox: { min, max, size }, center, worst, triangles }`; `worst` is mm for walls and degrees for overhangs. `overhangs` is `null` for resin, `islands` is `null` for fdm.
+`preview/check.json` (also printed by `--json`, plus `setIssues`) has this shape: `{ project, status, checkedAt, render, profile, parts: [...] }`; `check --set <set>` writes the same with `set` to `preview/check-<set>.json`. Each part has `id`, `status`, `triangles`, `bbox` and one object per check: `manifold` (`openEdges`, `nonManifoldEdges`, `flippedEdges`, `degenerate`, `inverted`, `samples`, `foldedEdges`, `folds`), `bed` (`size`, `bed`, `fits`, `fitsRotated`, `minZ`), `overhangs` and `walls` (`area`, `worst`, `regions`), `islands` (`count`, `islands`, resin only), `bodies` (`bodies`, `voids`, `floating`, `small`). Every check has a `status`. A region is `{ area, bbox: { min, max, size }, center, worst, triangles }`; `worst` is mm for walls and degrees for overhangs. `overhangs` is `null` for resin, `islands` is `null` for fdm.
 
 Exit code 1 means at least one FAIL. How to handle the result:
 
@@ -115,6 +115,32 @@ Exit code 1 means at least one FAIL. How to handle the result:
 
 In the viewer, the user can toggle an overhang heatmap (H, islands for resin) and a wall-thickness overlay (T). Both use the same thresholds and follow every re-render, so you can point them at a region ("turn on Walls (T): the red band on the rim is 0.3 mm").
 
+### 4c. Parameter sets (named variants)
+
+A project can keep named parameter sets in its `config.yaml` under `sets`: recurring, meaningful variants of the same model, such as the screw tray and the drawer organizer of one bin design. The `.scad` defaults stay the generic model; a set only stores the values that differ.
+
+Use a set when the user wants to keep a variant next to the default and come back to it ("also make a 160 x 80 version for screws", "save this as the deep one"). Do not use sets for one-off tweaks, for changing the design itself (change the defaults or the code), or for objects that print together (those are parts). Most projects have no sets.
+
+```bash
+pnpm -s scad sets <id>                                          # every set and how it differs from the defaults
+pnpm -s scad set save <id> screw-tray --label "Screw tray" -D width=160 -D depth=80 [--export]
+pnpm -s scad set save <id> screw-tray -D height=30              # update: merges into the existing values
+pnpm -s scad set save <id> screw-tray --replace -D ...          # replace all values
+pnpm -s scad set save <id> deep                                 # without -D: the viewer's current tweak
+pnpm -s scad set rm <id> screw-tray
+pnpm -s scad render <id> --set screw-tray                       # preview/sets/screw-tray/, preview/sheet-screw-tray.png
+pnpm -s scad check <id> --set screw-tray                        # preview/check-screw-tray.json
+pnpm -s scad snapshot <id> --set screw-tray --section x=0
+```
+
+- Always change sets through `pnpm -s scad set ...`, never by editing `sets:` in `config.yaml` by hand. The CLI rejects unknown parameter names, wrong types and values outside the declared range, keeps comments and formatting, and keeps `src/<file>.json` in sync when it exists.
+- Precedence, later wins: `render.defines`, then the set values, then `parts[].defines`. A part selector in `parts[].defines` therefore always wins; do not put it into a set.
+- A set applies to every part. `parts: [a, b]` in the config limits it; then only those parts are rendered, checked and exported for it.
+- `export: true` (`--export`, `--no-export`) makes `release` check and export the set next to the default model. Ask the user which variants should ship.
+- Every set you add or change is a design change: render and check it with `--set`, read its sheet, then checkpoint (or `release`). `config.yaml` is part of every checkpoint, so sets are versioned and restored with it.
+- `render`, `check` and `doctor` print `WARNING set "...": ...` when a set names a parameter that no longer exists or a value no longer fits its range. Fix it in the same change (scad-craft, "Renaming parameters").
+- `pnpm -s scad set sync <id>` writes OpenSCAD's own `src/<file>.json`, so the sets also show in the OpenSCAD GUI Customizer and work with `openscad -p main.json -P <set>`. Only on request; `config.yaml` stays the source of truth.
+
 ### 5. Finish the request
 
 When the user's request is done and the render is clean, update `brief.md` first (one line per request under `## Changelog`, decisions, changed dimensions), then finish with one command:
@@ -124,7 +150,7 @@ pnpm -s scad release <id> -m "Short description of what changed"   # check, chec
 pnpm -s scad release <id> -m "..." --accept-fail                    # only for FAILs recorded under Decisions
 ```
 
-`release` checks (rendering first if the sources changed), stops on FAIL, otherwise checkpoints and exports the configured formats, all against the same render. Use it whenever the user wants files or the project already has exports in `out/`. When no files are wanted yet, run `pnpm -s scad check <id>` and `pnpm -s scad checkpoint <id> -m "..."` (scad-versions). Do not run `checkpoint` and `export` before `check`: the check would be missing or stale for that version.
+`release` checks (rendering first if the sources changed), stops on FAIL, otherwise checkpoints and exports the configured formats, all against the same render. With parameter sets, it checks and exports the default model and every set with `export: true`. Use it whenever the user wants files or the project already has exports in `out/`. When no files are wanted yet, run `pnpm -s scad check <id>` and `pnpm -s scad checkpoint <id> -m "..."` (scad-versions). Do not run `checkpoint` and `export` before `check`: the check would be missing or stale for that version.
 
 Keep the reply short, a few lines: what changed, key dimensions, the version id, the files, open WARNs or decisions, and anything the user should check in the viewer (suggest the section tool or measuring a specific distance). Explain background, alternatives or slicer advice only when the user asks for it.
 
@@ -139,13 +165,14 @@ When asked for files, follow scad-export (`pnpm -s scad release <id> -m "..."`, 
 - Build plate (G) has the active printer's bed size and is centred under the model like a slicer would place it. A dashed box shows the build volume, labelled with the printer name. The outline and the bounding box dimensions turn red when the model does not fit.
 - Overhang heatmap (H): for fdm, faces past `overhangAngle` shade from amber to red, faces on the bed are teal. For resin, the button reads Islands and marks unsupported start points in red. Wall overlay (T): red under the nozzle (resin: `minFeature`), amber up to `minWall`, fading to grey at twice that. A legend shows the totals.
 - Parameter panel lists customizer parameters; the user can tweak values (rendered separately, your files stay untouched) and click "Send to agent", which writes a proposal for you.
+- Set dropdown at the top of the parameter panel (only when the project has sets or the user tweaked something): picking a set loads its values as the tweak, values the set changes are marked with their default, values tweaked on top of the set are highlighted. "Update set", "Save as set" and the delete button write `config.yaml` directly, like `pnpm -s scad set`. The 3MF download of a selected set is named after the set.
 - Note tool (N) pins numbered notes on faces, edges and corners; the Notes panel sends them with a snapshot of the view as annotations for you. If a request is about a specific spot that is hard to describe in words, suggest the user pins a note there.
 - Version timeline at the bottom shows checkpoints; the ghost button overlays another version for comparison.
 
 ## Rules
 
 - Models live only in `workspace/<id>/`, shared modules in `workspace/_libs/`, third-party checkouts in `workspace/_vendor/` (scad-libs).
-- `src/*.scad` and `config.yaml` are the source of truth. Never edit `preview/`, `versions/`, `out/` or `temp/`.
+- `src/*.scad` and `config.yaml` are the source of truth. Never edit `preview/`, `versions/`, `out/` or `temp/`. Change parameter sets only with `pnpm -s scad set ...`.
 - Use `pnpm -s scad` for renders, snapshots, exports, versions and libraries instead of calling OpenSCAD directly. It applies the config and library paths and keeps the viewer in sync.
 - Units are millimetres, Z is up. Each part is modelled in its print orientation and rests on z = 0; the viewer, `check` and the exported files all show exactly that.
 - Design for the active printer profile (`pnpm -s scad printer <id>`). Take clearances and minimum sizes from it, never from assumed defaults.

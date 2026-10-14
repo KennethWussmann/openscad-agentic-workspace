@@ -156,6 +156,21 @@ describe('editing sets in config.yaml', () => {
     expect(load().meta.sets.tray).toEqual({ label: 'Tray', values: { width: 160 }, export: true })
   })
 
+  it('writes values that do not fit on one line as a block', () => {
+    const { paths, layout } = setup('sets-block')
+    const long = { width: 160, rounded: false, style: 'b', offset: [10, 20], label: 'A long label for the tray' }
+    saveSet({ paths, project: 'bin', name: 'long', values: long, params })
+    expect(readFileSync(layout.config, 'utf8')).toContain('    values:\n      width: 160\n      rounded: false\n')
+    saveSet({
+      paths,
+      project: 'bin',
+      name: 'small',
+      values: { style: 'b', offset: [1, 2], label: 'Some more text' },
+      params,
+    })
+    expect(readFileSync(layout.config, 'utf8')).toContain('  small:\n    label: Small\n    values:\n      width: 40\n')
+  })
+
   it('merges values into an existing set, or replaces them', () => {
     const { paths, load } = setup('sets-merge-edit')
     saveSet({ paths, project: 'bin', name: 'small', values: { width: 50, style: 'b' }, params })

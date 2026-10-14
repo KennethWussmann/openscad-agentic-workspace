@@ -44,6 +44,18 @@ const setsMap = (doc: Document) => {
   return created
 }
 
+const FLOW_WIDTH = 80
+
+const fitsOnOneLine = (values: Record<string, DefineValue>) =>
+  `    values: { ${Object.entries(values)
+    .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
+    .join(', ')} }`.length <= FLOW_WIDTH
+
+const tidyValues = (doc: Document, name: string, values: Record<string, DefineValue>) => {
+  const node = doc.getIn(['sets', name, 'values'], true)
+  if (isMap(node) && node.flow && !fitsOnOneLine(values)) node.flow = false
+}
+
 const assertValid = (config: ProjectConfig, name: string, values: Record<string, DefineValue>, params: ParamDef[]) => {
   const bad = Object.keys(values).filter((k) => !PARAM_NAME.test(k))
   if (bad.length) throw new Error(`Invalid parameter name(s): ${bad.join(', ')}`)
@@ -77,7 +89,7 @@ export const saveSet = (
         ...(opts.export ? { export: true } : {}),
       }) as YAMLMap
       const valuesNode = node.get('values', true)
-      if (isMap(valuesNode)) valuesNode.flow = true
+      if (isMap(valuesNode)) valuesNode.flow = fitsOnOneLine(values)
       sets.set(name, node)
       return
     }
@@ -93,6 +105,7 @@ export const saveSet = (
     }
     if (opts.export === true) doc.setIn(['sets', name, 'export'], true)
     if (opts.export === false) doc.deleteIn(['sets', name, 'export'])
+    tidyValues(doc, name, values)
   })
   return { ...result, created, values }
 }

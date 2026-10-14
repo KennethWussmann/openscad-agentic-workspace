@@ -16,7 +16,7 @@ export const formatRender = (r: RenderResult) => {
     for (const d of echoes.slice(0, 20)) lines.push(`    ECHO: ${d.message}`)
     if (echoes.length > 20) lines.push(`    ... ${echoes.length - 20} more ECHO lines`)
   }
-  if (r.params.length)
+  if (r.params.length && !r.set)
     lines.push(`  params: ${r.params.map((p) => `${p.name}=${JSON.stringify(p.initial)}`).join(', ')}`)
   return lines.join('\n')
 }
