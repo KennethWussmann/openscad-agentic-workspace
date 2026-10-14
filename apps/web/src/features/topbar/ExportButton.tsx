@@ -12,6 +12,7 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
   const exporting = useStore((s) => s.exporting)
   const versionId = useStore((s) => s.versionId)
   const edits = useStore((s) => s.edits)
+  const activeSet = useStore((s) => s.activeSet)
   const showExportNotice = useStore((s) => s.showExportNotice)
   const [menu, setMenu] = useState(false)
   const root = useRef<HTMLDivElement>(null)
@@ -19,11 +20,12 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
   useDismiss(menu, root, closeMenu)
   const tweaks = Object.keys(edits).length
   const version = versionId ? project.versions.find((v) => v.id === versionId) : null
+  const set = activeSet && project.sets[activeSet] ? activeSet : null
 
-  const run = (withTweaks: boolean) => {
+  const run = (withSet: boolean, withTweaks: boolean) => {
     setMenu(false)
     api
-      .exportModels(project.id, withTweaks ? edits : {})
+      .exportModels(project.id, withTweaks ? edits : {}, withSet ? set : null)
       .then((result) => deliverExport(project.id, result))
       .catch((e: unknown) => showExportNotice({ result: null, error: errorMessage(e) }))
   }
@@ -41,7 +43,7 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
       return
     }
     if (tweaks) setMenu(!menu)
-    else run(false)
+    else run(Boolean(set), false)
   }
 
   const title = version
@@ -49,8 +51,10 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
     : exporting
       ? 'Export running'
       : tweaks
-        ? 'Export 3MF (source or with tweaks)'
-        : 'Export 3MF'
+        ? `Export 3MF (source${set ? ', set' : ''} or with tweaks)`
+        : set
+          ? `Export 3MF (set ${set})`
+          : 'Export 3MF'
   const blocked = exporting && !version
 
   return (
@@ -60,13 +64,21 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
       </IconButton>
       {menu && (
         <div className="export-menu">
-          <button type="button" onClick={() => run(false)}>
+          <button type="button" onClick={() => run(false, false)}>
             <strong>Export source</strong>
-            <small>The model as the code defines it, tweaks are ignored</small>
+            <small>The model as the code defines it, sets and tweaks are ignored</small>
           </button>
-          <button type="button" onClick={() => run(true)}>
+          {set && (
+            <button type="button" onClick={() => run(true, false)}>
+              <strong>Export set {set}</strong>
+              <small>The saved set values, files named after the set</small>
+            </button>
+          )}
+          <button type="button" onClick={() => run(true, true)}>
             <strong>Export with {plural(tweaks, 'tweak')}</strong>
-            <small>Written as *-tweaked.3mf, not part of any version</small>
+            <small>
+              {set ? `On top of ${set}, written as *-tweaked.3mf` : 'Written as *-tweaked.3mf, not part of any version'}
+            </small>
           </button>
         </div>
       )}

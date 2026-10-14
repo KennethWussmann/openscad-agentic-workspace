@@ -38,6 +38,11 @@ const main = async () => {
       'accept-fail': { type: 'boolean' },
       focus: { type: 'string' },
       define: { type: 'string', short: 'D', multiple: true },
+      set: { type: 'string' },
+      sets: { type: 'string' },
+      label: { type: 'string' },
+      export: { type: 'boolean' },
+      replace: { type: 'boolean' },
     },
   })
   const [command, ...args] = positionals

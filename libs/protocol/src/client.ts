@@ -2,6 +2,7 @@ import type { AnnotationInput } from './annotations.ts'
 import { API } from './constants.ts'
 import type { ExportResult, Health, ProjectState, ProjectSummary, Viewers } from './project.ts'
 import type { DefineValue, RenderResult } from './render.ts'
+import type { SaveSetInput, SetsResponse } from './sets.ts'
 
 type Init = {
   method?: 'GET' | 'POST' | 'DELETE'
@@ -41,10 +42,17 @@ export const createApiClient = (origin = '') => {
     tweak: (id: string, params: Record<string, DefineValue>) =>
       call<RenderResult>(`${projectRoute(id)}/tweak`, { method: 'POST', body: { params } }),
     clearTweak: (id: string) => call<Ok>(`${projectRoute(id)}/tweak`, { method: 'DELETE' }),
-    exportModels: (id: string, overrides: Record<string, DefineValue>) =>
-      call<ExportResult>(`${projectRoute(id)}/export`, { method: 'POST', body: { overrides } }),
-    sendProposal: (id: string, params: Record<string, DefineValue>, note: string) =>
-      call<WrittenFile>(`${projectRoute(id)}/proposal`, { method: 'POST', body: { params, note: note || undefined } }),
+    exportModels: (id: string, overrides: Record<string, DefineValue>, set: string | null = null) =>
+      call<ExportResult>(`${projectRoute(id)}/export`, { method: 'POST', body: { overrides, set: set ?? undefined } }),
+    saveSet: (id: string, input: SaveSetInput) =>
+      call<SetsResponse>(`${projectRoute(id)}/sets`, { method: 'POST', body: input }),
+    deleteSet: (id: string, name: string) =>
+      call<SetsResponse>(`${projectRoute(id)}/sets/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+    sendProposal: (id: string, params: Record<string, DefineValue>, note: string, set: string | null = null) =>
+      call<WrittenFile>(`${projectRoute(id)}/proposal`, {
+        method: 'POST',
+        body: { params, note: note || undefined, set: set ?? undefined },
+      }),
     discardProposal: (id: string) => call<Ok>(`${projectRoute(id)}/proposal`, { method: 'DELETE' }),
     sendAnnotations: (id: string, input: AnnotationInput) =>
       call<WrittenAnnotations>(`${projectRoute(id)}/annotations`, { method: 'POST', body: input }),

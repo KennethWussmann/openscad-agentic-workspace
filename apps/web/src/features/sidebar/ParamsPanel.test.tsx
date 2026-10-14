@@ -48,7 +48,7 @@ it('sends tweaks with a note to the agent', async () => {
   const note = screen.getByPlaceholderText('Note for the agent (optional)')
   fireEvent.change(note, { target: { value: 'deeper' } })
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Send to agent' })))
-  expect(send).toHaveBeenCalledWith('box', { depth: 15 }, 'deeper')
+  expect(send).toHaveBeenCalledWith('box', { depth: 15 }, 'deeper', null)
   expect(note).toHaveValue('')
 })
 
@@ -82,4 +82,104 @@ it('notes that tweaks apply to the working copy while viewing a version', () => 
   useStore.setState({ versionId: 'v1' })
   render(<ParamsPanel project={withParams()} />)
   expect(screen.getByText('Viewing v1. Tweaks apply to the working copy.')).toBeInTheDocument()
+})
+
+const sets = {
+  tray: { label: 'Tray', values: { width: 40, lid: false }, export: true },
+  deep: { values: { depth: 30 }, export: false },
+}
+
+it('hides the set bar for projects without sets until something is tweaked', () => {
+  render(<ParamsPanel project={withParams()} />)
+  expect(screen.queryByRole('combobox', { name: 'Parameter set' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Save as set/ })).not.toBeInTheDocument()
+  fireEvent.change(screen.getByRole('spinbutton', { name: 'width' }), { target: { value: '30' } })
+  expect(screen.getByRole('button', { name: /Save as set/ })).toBeInTheDocument()
+})
+
+it('loads a set as the baseline and marks values that differ from it', () => {
+  render(<ParamsPanel project={withParams({ sets })} />)
+  fireEvent.change(screen.getByRole('combobox', { name: 'Parameter set' }), { target: { value: 'tray' } })
+  expect(s().activeSet).toBe('tray')
+  const width = screen.getByRole('spinbutton', { name: 'width' })
+  expect(width).toHaveValue(40)
+  expect(width.closest('.param')).toHaveClass('is-set')
+  expect(screen.getByText('default 20')).toBeInTheDocument()
+  expect(screen.getByText('2 values')).toBeInTheDocument()
+  expect(screen.getByText('release')).toBeInTheDocument()
+  fireEvent.change(width, { target: { value: '45' } })
+  expect(s().edits).toEqual({ width: 45 })
+  expect(width.closest('.param')).toHaveClass('is-edited')
+  fireEvent.change(width, { target: { value: '40' } })
+  expect(s().edits).toEqual({})
+  fireEvent.change(screen.getByRole('combobox', { name: 'Parameter set' }), { target: { value: '' } })
+  expect(s().activeSet).toBeNull()
+  expect(screen.getByRole('spinbutton', { name: 'width' })).toHaveValue(20)
+})
+
+it('updates the selected set with the tweaked values', async () => {
+  const save = vi.spyOn(api, 'saveSet').mockResolvedValue({ ok: true, sets, issues: [] })
+  act(() => useStore.setState({ project: withParams({ sets }), activeSet: 'tray', edits: { depth: 12 } }))
+  render(<ParamsPanel project={withParams({ sets })} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: /Update set/ })))
+  expect(save).toHaveBeenCalledWith('box', {
+    name: 'tray',
+    values: { width: 40, lid: false, depth: 12 },
+    replace: true,
+  })
+  expect(s().edits).toEqual({})
+  expect(s().activeSet).toBe('tray')
+})
+
+it('saves the tweak as a new set with a name derived from the label', async () => {
+  const next = { ...sets, 'screw-tray': { label: 'Screw tray', values: { width: 33 }, export: true } }
+  const save = vi.spyOn(api, 'saveSet').mockResolvedValue({ ok: true, sets: next, issues: [] })
+  act(() => useStore.setState({ project: withParams({ sets }), edits: { width: 33 } }))
+  render(<ParamsPanel project={withParams({ sets })} />)
+  fireEvent.click(screen.getByRole('button', { name: /Save as set/ }))
+  const form = screen.getByRole('form', { name: 'Save as set' })
+  fireEvent.change(within(form).getByPlaceholderText('Screw tray'), { target: { value: 'Tray' } })
+  expect(within(form).getByText('Name: a set named "tray" already exists')).toBeInTheDocument()
+  expect(within(form).getByRole('button', { name: /Save set/ })).toBeDisabled()
+  fireEvent.change(within(form).getByPlaceholderText('Screw tray'), { target: { value: 'Screw tray' } })
+  expect(within(form).getByPlaceholderText('screw-tray')).toHaveValue('screw-tray')
+  fireEvent.click(within(form).getByRole('checkbox', { name: 'Export on release' }))
+  await act(async () => fireEvent.click(within(form).getByRole('button', { name: /Save set/ })))
+  expect(save).toHaveBeenCalledWith('box', {
+    name: 'screw-tray',
+    label: 'Screw tray',
+    values: { width: 33 },
+    export: true,
+  })
+  expect(s().activeSet).toBe('screw-tray')
+  expect(s().project?.sets['screw-tray']).toBeDefined()
+})
+
+it('shows server errors when saving fails', async () => {
+  vi.spyOn(api, 'saveSet').mockRejectedValue(new Error('width: 900 is above the maximum 400'))
+  act(() => useStore.setState({ project: withParams({ sets }), activeSet: 'tray', edits: { width: 900 } }))
+  render(<ParamsPanel project={withParams({ sets })} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: /Update set/ })))
+  expect(screen.getByText('width: 900 is above the maximum 400')).toBeInTheDocument()
+  expect(s().edits).toEqual({ width: 900 })
+})
+
+it('deletes the selected set after confirmation and shows set warnings', async () => {
+  const remove = vi.spyOn(api, 'deleteSet').mockResolvedValue({ ok: true, sets: { deep: sets.deep }, issues: [] })
+  const setIssues = [{ set: 'tray', param: 'lid', message: 'lid: 1 is not a boolean' }]
+  act(() => useStore.setState({ project: withParams({ sets, setIssues }), activeSet: 'tray' }))
+  render(<ParamsPanel project={withParams({ sets, setIssues })} />)
+  expect(screen.getByText('lid: 1 is not a boolean')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Delete set tray' }))
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: /^Delete$/ })))
+  expect(remove).toHaveBeenCalledWith('box', 'tray')
+  expect(s().activeSet).toBeNull()
+})
+
+it('sends tweaks on top of a set with the set name', async () => {
+  const send = vi.spyOn(api, 'sendProposal').mockResolvedValue({ ok: true, file: 'proposals/params.json' })
+  act(() => useStore.setState({ activeSet: 'tray', edits: { depth: 12 } }))
+  render(<ParamsPanel project={withParams({ sets })} />)
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Send to agent' })))
+  expect(send).toHaveBeenCalledWith('box', { depth: 12 }, '', 'tray')
 })

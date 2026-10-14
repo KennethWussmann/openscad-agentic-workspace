@@ -10,15 +10,28 @@ pnpm -s scad release <id> -m "..."                # check, checkpoint, then expo
 pnpm -s scad export <id>                          # formats from config
 pnpm -s scad export <id> --formats 3mf,stl,png   # override
 pnpm -s scad export <id> --part lid
+pnpm -s scad export <id> --set screw-tray        # one parameter set
+pnpm -s scad export <id> --sets default,screw-tray
+pnpm -s scad export <id> --sets all              # the default model and every set
 ```
 
-Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project}-{part}`; placeholders `{project}`, `{part}`, `{version}`). `out/export.json` lists every file with its status. `{version}` is the latest checkpoint id when the working copy matches it, otherwise `wip`; checkpoint first so delivered files map to a version.
+Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project}-{part}`; placeholders `{project}`, `{part}`, `{version}`, `{set}`). `out/export.json` lists every file with its status and set. `{version}` is the latest checkpoint id when the working copy matches it, otherwise `wip`; checkpoint first so delivered files map to a version.
+
+## Parameter sets
+
+Projects with parameter sets (scad skill, "Parameter sets") export each set as its own files:
+
+- `{set}` is the set name, or `default` for the model without a set. Without `{set}` in the template, the default model keeps its plain name and set files get a `-<set>` suffix (`universal-bin-main-screw-tray.3mf`). Put `{set}` into a project's `export.filename` only when the user wants every file named after its variant, e.g. `"{project}-{set}-{part}"`.
+- `release` checks and exports the default model plus every set with `export: true`, and stops when any of them FAILs. Mark the sets the user wants delivered with `pnpm -s scad set save <id> <set> --export`; others are exported on request with `--set` or `--sets`.
+- Check a set before exporting it on its own: `pnpm -s scad check <id> --set <set>` (writes `preview/check-<set>.json`). `export` notes when the check of an exported set is missing, outdated or failed.
+- A set with `parts: [...]` only exports those parts.
 
 ## Exports from the viewer
 
 The user can export 3MF from the browser viewer (download button in the top bar). It runs the same export with `formats: [3mf]` for all parts with `preview: true`, writes to `out/` and overwrites `out/export.json`. Read `export.json` to see what the user last exported:
 
-- `overrides` holds the tweaked parameter values when the user exported with tweaks. Those files are named `*-tweaked.3mf`, `version` is `tweaked`, and the geometry does not exist in the source. If the user wants to keep them, apply the values to the source (like a parameter proposal) and checkpoint.
+- `sets` names the parameter set the user had selected (`default` when none). A selected set without tweaks exports under the set's file name and the current version, like `pnpm -s scad export <id> --set <set>`.
+- `overrides` holds the tweaked parameter values when the user exported with tweaks (on top of the selected set, if any). Those files are named `*-tweaked.3mf`, `version` is `tweaked`, and the geometry does not exist in the source. If the user wants to keep them, apply the values to the source (like a parameter proposal) or save them as a set, then checkpoint.
 - `meshCheck` is the printability check run on the exported 3MF files themselves (same structure as `check.json`). It does not update `preview/check.json`, so still run `pnpm -s scad check` before your own checkpoint or export.
 
 ## Formats

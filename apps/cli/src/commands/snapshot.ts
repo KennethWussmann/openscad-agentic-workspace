@@ -4,7 +4,6 @@ import path from 'node:path'
 import {
   type Focus,
   modelOutlines,
-  parseDefineInput,
   readRender,
   renderTemporary,
   renderView,
@@ -17,7 +16,7 @@ import {
 } from '@scad/core'
 import { unionBoxes } from '@scad/geometry'
 import type { DefineValue, PartResult, Vec3 } from '@scad/protocol'
-import { type Ctx, need, type Outcome, partsFlag, rel, settingsFor, UsageError } from '../context.ts'
+import { type Ctx, need, type Outcome, parseDefines, partsFlag, rel, settingsFor, UsageError } from '../context.ts'
 import { formatDiagnostic } from '../format/common.ts'
 
 const parseSection = (raw: string): Section => {
@@ -37,20 +36,12 @@ const parseFocus = (raw: string): Focus => {
   return { center: center as Vec3, radius: r }
 }
 
-const parseDefines = (raw: string[] = []) =>
-  Object.fromEntries(
-    raw.map((entry) => {
-      const m = entry.match(/^\s*(\$?[A-Za-z_]\w*)\s*=(.*)$/)
-      if (!m) throw new UsageError('-D expects name=value, e.g. -D part=assembly or -D width=40')
-      return [m[1], parseDefineInput(m[2])]
-    }),
-  ) as Record<string, DefineValue>
-
 const renderedParts = async (ctx: Ctx, project: string, dir: string, defines: Record<string, DefineValue>) => {
   const parts = partsFlag(ctx.flags)
-  if (Object.keys(defines).length) {
+  const set = ctx.flags.set ?? null
+  if (Object.keys(defines).length || set) {
     const openscad = await resolveOpenscad(ctx.paths)
-    return renderTemporary({ paths: ctx.paths, project, openscad, defines, outDir: dir, parts })
+    return renderTemporary({ paths: ctx.paths, project, openscad, defines, outDir: dir, parts, set })
   }
   const result = readRender(ctx.paths, project)
   if (!result) throw new Error(`Render ${project} first`)
@@ -58,14 +49,17 @@ const renderedParts = async (ctx: Ctx, project: string, dir: string, defines: Re
 }
 
 const failure = (parts: PartResult[]) =>
-  ['Render with -D failed', ...parts.flatMap((p) => p.diagnostics.map((d) => `  ${formatDiagnostic(d)}`))].join('\n')
+  [
+    'Render with -D or --set failed',
+    ...parts.flatMap((p) => p.diagnostics.map((d) => `  ${formatDiagnostic(d)}`)),
+  ].join('\n')
 
 export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
   const { paths, flags, args } = ctx
   const project = need(args[0], 'project id')
   const layout = requireProject(paths, project)
   const defines = parseDefines(flags.define)
-  const defined = Object.keys(defines).length > 0
+  const defined = Object.keys(defines).length > 0 || Boolean(flags.set)
   const section = flags.section ? parseSection(flags.section) : null
   const focus = flags.focus ? parseFocus(flags.focus) : null
   if (flags.view && !(flags.view in VIEWS))
@@ -78,7 +72,7 @@ export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
   const size = Number(flags.size ?? 900)
   const name =
     flags.out ??
-    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}${defined ? '-defined' : ''}.png`
+    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}${flags.set ? `-${flags.set}` : ''}${Object.keys(defines).length ? '-defined' : ''}.png`
   const out = path.join(layout.preview, path.basename(name))
   const work = path.join(layout.temp, `snapshot-${randomBytes(4).toString('hex')}`)
   try {
@@ -107,7 +101,7 @@ export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
     )
     const ok = existsSync(out) && !diagnostics.some((d) => d.level === 'error')
     return {
-      data: { file: rel(paths, out), ok, defines, diagnostics },
+      data: { file: rel(paths, out), ok, defines, set: flags.set ?? null, diagnostics },
       text: [ok ? `Wrote ${rel(paths, out)}` : 'Snapshot failed', ...diagnostics.map(formatDiagnostic)].join('\n'),
       exitCode: ok ? 0 : 1,
     }

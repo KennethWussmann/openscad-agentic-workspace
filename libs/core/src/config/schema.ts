@@ -1,4 +1,4 @@
-import { type DefineValue, EXPORT_FORMATS, type Tolerances } from '@scad/protocol'
+import { type DefineValue, EXPORT_FORMATS, RESERVED_SET_NAMES, SET_NAME, type Tolerances } from '@scad/protocol'
 import { z } from 'zod'
 
 export const DefineValueSchema: z.ZodType<DefineValue> = z.lazy(() =>
@@ -148,23 +148,54 @@ export const SettingsSchema = z
 
 export type Settings = z.infer<typeof SettingsSchema>
 
+const PartId = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'part ids are lowercase-dashed')
+
 const PartSchema = z.strictObject({
-  id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'part ids are lowercase-dashed'),
+  id: PartId,
   label: z.string().optional(),
   file: z.string().default('src/main.scad'),
   defines: Defines.default({}),
   preview: z.boolean().default(true),
 })
 
-export const ProjectMetaSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().default(''),
-  parts: z
-    .array(PartSchema)
-    .min(1)
-    .default([{ id: 'main', file: 'src/main.scad', defines: {}, preview: true }])
-    .refine((parts) => new Set(parts.map((p) => p.id)).size === parts.length, 'part ids must be unique'),
+const SetSchema = z.strictObject({
+  label: z.string().min(1).optional(),
+  values: Defines.default({}),
+  export: z.boolean().default(false),
+  parts: z.array(PartId).min(1).optional(),
 })
+
+export const ProjectMetaSchema = z
+  .object({
+    name: z.string().min(1),
+    description: z.string().default(''),
+    parts: z
+      .array(PartSchema)
+      .min(1)
+      .default([{ id: 'main', file: 'src/main.scad', defines: {}, preview: true }])
+      .refine((parts) => new Set(parts.map((p) => p.id)).size === parts.length, 'part ids must be unique'),
+    sets: z.record(z.string(), SetSchema).default({}),
+  })
+  .superRefine((meta, ctx) => {
+    const ids = new Set(meta.parts.map((p) => p.id))
+    for (const [name, set] of Object.entries(meta.sets)) {
+      if (!SET_NAME.test(name))
+        ctx.addIssue({ code: 'custom', path: ['sets', name], message: 'set names are lowercase-dashed' })
+      if (RESERVED_SET_NAMES.includes(name))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sets', name],
+          message: `${RESERVED_SET_NAMES.map((n) => `"${n}"`).join(' and ')} are reserved set names`,
+        })
+      for (const [i, part] of (set.parts ?? []).entries())
+        if (!ids.has(part))
+          ctx.addIssue({
+            code: 'custom',
+            path: ['sets', name, 'parts', i],
+            message: `"${part}" is not a part id (${[...ids].join(', ')})`,
+          })
+    }
+  })
 
 export type ProjectMeta = z.infer<typeof ProjectMetaSchema>
 

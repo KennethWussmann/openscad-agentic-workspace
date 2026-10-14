@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApiClient, fileRoute } from '../client.ts'
+import { setNameProblem } from '../sets.ts'
 
 const respond = (status: number, body: unknown) =>
   vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }))
@@ -19,6 +20,21 @@ describe('createApiClient', () => {
     })
   })
 
+  it('saves and deletes sets and exports a set', async () => {
+    const fetch = respond(200, { ok: true, sets: {}, issues: [] })
+    vi.stubGlobal('fetch', fetch)
+    const api = createApiClient()
+    await api.saveSet('box', { name: 'wide', values: { width: 60 } })
+    await api.deleteSet('box', 'wide')
+    await api.exportModels('box', {}, 'wide')
+    const calls = fetch.mock.calls as unknown as [string, RequestInit][]
+    expect(calls.map(([route, init]) => [route, init.method, init.body])).toEqual([
+      ['/api/projects/box/sets', 'POST', JSON.stringify({ name: 'wide', values: { width: 60 } })],
+      ['/api/projects/box/sets/wide', 'DELETE', undefined],
+      ['/api/projects/box/export', 'POST', JSON.stringify({ overrides: {}, set: 'wide' })],
+    ])
+  })
+
   it('throws the server error message', async () => {
     vi.stubGlobal('fetch', respond(404, { error: 'unknown project' }))
     await expect(createApiClient().navigate('nope')).rejects.toThrow('unknown project')
@@ -35,5 +51,15 @@ describe('fileRoute', () => {
     expect(fileRoute('box', 'preview/a b.3mf', '2026-01-01T00:00:00Z')).toBe(
       '/api/projects/box/file/preview/a%20b.3mf?v=2026-01-01T00%3A00%3A00Z',
     )
+  })
+})
+
+describe('setNameProblem', () => {
+  it('accepts lowercase-dashed names and rejects reserved, invalid and taken ones', () => {
+    expect(setNameProblem('screw-tray')).toBeNull()
+    expect(setNameProblem('Screw tray')).toBe('use lowercase letters, digits and dashes')
+    expect(setNameProblem('default')).toBe('"default" is reserved')
+    expect(setNameProblem('all')).toBe('"all" is reserved')
+    expect(setNameProblem('wide', ['wide'])).toBe('a set named "wide" already exists')
   })
 })

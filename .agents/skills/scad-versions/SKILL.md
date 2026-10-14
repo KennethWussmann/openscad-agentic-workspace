@@ -33,7 +33,7 @@ When the user also wants files, or the project already has exports in `out/`, us
 pnpm -s scad restore <id> v003
 ```
 
-Copies `src/` and `config.yaml` of v003 back, renders, and records the result as a new version ("Restore v003: ..."), so nothing is ever lost and the timeline stays linear. If the user only wants to look at an old version, point them to the timeline in the viewer instead.
+Copies `src/` and `config.yaml` (with its parameter sets) of v003 back, renders, and records the result as a new version ("Restore v003: ..."), so nothing is ever lost and the timeline stays linear. If the user only wants to look at an old version, point them to the timeline in the viewer instead.
 
 Shared `_libs` files are not restored by default because other projects use them. If they changed since that version, restore prints a warning; then either accept the difference, or restore them with `--with-libs` after confirming with the user that other projects are not affected.
 
@@ -56,10 +56,14 @@ pnpm -s scad proposal <id> --json   # the same, machine-readable
 
 ### Parameter proposals (`proposals/params.json`)
 
-The user tweaks parameters in the viewer, sees the result rendered live (your files stay untouched) and presses "Send to agent". `proposal` prints a table of parameter, current value, proposed value and the user's note.
+The user tweaks parameters in the viewer, sees the result rendered live (your files stay untouched) and presses "Send to agent". `proposal` prints a table of parameter, current value, proposed value and the user's note. When the user had a parameter set selected, the proposal names it (`set` in the JSON) and the table compares against the set's values.
 
-1. Port the proposed values into the parameter defaults in the `.scad` source. Keep the parameter structure; if a value is outside a declared range, widen the range deliberately or discuss it.
-2. Consider the note and side effects (a larger value may need other derived dimensions to change).
+A proposal means one of two things; decide from the note and ask when it is not clear:
+
+- **Change the defaults** (the model itself should change): port the values into the parameter defaults in the `.scad` source. Keep the parameter structure; if a value is outside a declared range, widen the range deliberately or discuss it. Consider side effects (a larger value may need other derived dimensions to change).
+- **Keep a variant** ("save this as the small one", "a version for screws", or tweaks on top of a selected set): save or update a parameter set instead of touching the defaults, `pnpm -s scad set save <id> <set> -D name=value ...` (scad skill, "Parameter sets"). For tweaks on top of a set, update that set unless the note asks for a new one.
+
+The user can also save, update and delete sets directly in the viewer; those changes land in `config.yaml` without a proposal. `pnpm -s scad status <id>` lists the sets, and the next checkpoint records them.
 
 ### 3D annotations (`proposals/annotations.json` + `annotations.png`)
 

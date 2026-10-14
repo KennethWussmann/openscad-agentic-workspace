@@ -1,6 +1,7 @@
 import type { DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/protocol'
 import { create } from 'zustand'
 import { sameJson } from '../lib/format.ts'
+import { overridesOf, setValues, withoutDefaults } from '../lib/sets.ts'
 import { DISPLAY_KEY, loadDisplay, SIDEBAR_KEY, setParam, urlParams } from './persist.ts'
 import type { AnalysisSummary, Display, ExportNotice, Measurement, NoteDraft, SectionState, Tool } from './types.ts'
 
@@ -26,6 +27,7 @@ export type Store = {
   notes: NoteDraft[]
   editing: number | null
   edits: Record<string, DefineValue>
+  activeSet: string | null
   fitToken: number
   bounds: [Vec3, Vec3] | null
   help: boolean
@@ -58,6 +60,7 @@ export type Store = {
   clearNotes: () => void
   setEdit: (name: string, value: DefineValue | undefined) => void
   resetEdits: () => void
+  selectSet: (name: string | null) => void
   requestFit: () => void
   setBounds: (b: [Vec3, Vec3] | null) => void
   toggleHelp: () => void
@@ -91,6 +94,7 @@ export const useStore = create<Store>((set, get) => ({
   notes: [],
   editing: null,
   edits: {},
+  activeSet: null,
   fitToken: 0,
   bounds: null,
   help: false,
@@ -120,6 +124,7 @@ export const useStore = create<Store>((set, get) => ({
             notes: [],
             editing: null,
             edits: {},
+            activeSet: null,
           }),
     })
     if (!sameProject) get().requestFit()
@@ -128,6 +133,12 @@ export const useStore = create<Store>((set, get) => ({
       const { versionId, ghostId } = get()
       if (versionId && !versions.has(versionId)) set({ versionId: null })
       if (ghostId && !versions.has(ghostId)) set({ ghostId: null })
+      const { activeSet, edits } = get()
+      if (activeSet && !project.sets[activeSet])
+        set({
+          activeSet: null,
+          edits: withoutDefaults(overridesOf(setValues(prev, activeSet), edits), project.render?.params ?? []),
+        })
     }
   },
   selectProject: (projectId) => {
@@ -182,6 +193,7 @@ export const useStore = create<Store>((set, get) => ({
       return { edits }
     }),
   resetEdits: () => set({ edits: {} }),
+  selectSet: (activeSet) => set({ activeSet, edits: {} }),
   requestFit: () => set((s) => ({ fitToken: s.fitToken + 1 })),
   setBounds: (bounds) => {
     const prev = get().bounds
@@ -203,3 +215,6 @@ export const useStore = create<Store>((set, get) => ({
     if (!sameJson(get().analysis, analysis)) set({ analysis })
   },
 }))
+
+export const selectOverrides = (s: Pick<Store, 'project' | 'activeSet' | 'edits'>) =>
+  overridesOf(setValues(s.project, s.activeSet), s.edits)

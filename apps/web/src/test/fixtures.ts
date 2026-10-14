@@ -100,6 +100,8 @@ export const project = (overrides: Partial<ProjectState> = {}): ProjectState => 
   name: 'Box',
   description: 'A plain box',
   parts: [partDef()],
+  sets: {},
+  setIssues: [],
   profile: fdmProfile(),
   render: renderResult(),
   tweak: null,

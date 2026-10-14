@@ -82,6 +82,14 @@ Rules behind it:
 - Never assign a variable twice in the same scope; OpenSCAD keeps the last value for the whole scope and warns.
 - Prefer `use <file.scad>` for module libraries (imports modules and functions only). `include <file.scad>` also runs the file's top-level code and copies its variables; use it only for shared dimension files or libraries that require it (BOSL2).
 
+## Renaming parameters
+
+Parameter names are an interface: `config.yaml` refers to them in `render.defines`, `parts[].defines` and parameter sets, and OpenSCAD silently ignores names it does not know. When you rename, remove or narrow a parameter, migrate its users in the same change:
+
+- Sets: `pnpm -s scad set rename-param <id> <old> <new>` renames the key in every set; `pnpm -s scad set unset <id> <set|all> <param>` removes it. Never edit `sets:` by hand.
+- `parts[].defines` and `render.defines`: edit `config.yaml`.
+- Run `pnpm -s scad sets <id>` (or `render`) afterwards. It prints `WARNING set "...": ...` for names that no longer exist and for values outside a changed range or option list; fix every warning before the checkpoint.
+
 ## Design the way you print
 
 The model's coordinates are its print orientation. What the viewer shows, what `check` analyses and what lands in `out/` is the part lying on the bed exactly as it will print. There is no separate viewing orientation.
@@ -170,7 +178,8 @@ parts:
     defines: { part: "lid" }
 ```
 
-- A single entry file with a `part` selector parameter is the usual pattern (see the example above). Parameters set through a part's `defines` are hidden from the parameter panel.
+- A single entry file with a `part` selector parameter is the usual pattern (see the example above). Parameters set through a part's `defines` are hidden from the parameter panel, and they win over parameter set values, so keep part selectors out of sets.
+- A part is an object that is printed; a parameter set is a variant of the whole model. A second plate size that is printed next to the first is a part, a bigger version of the same bin is a set (scad skill, "Parameter sets").
 - Each part is modelled in its own print orientation. Translate parts next to each other in `main()` so they do not overlap on the bed, and keep the assembled position for the `assembly` option only ("Design the way you print"). Check the fit with `pnpm -s scad snapshot <id> --part <any> -D part=assembly --section ...`.
 - `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm -s scad export` (used for 2D outlines and merged 3MFs, see scad-export).
 - Parts that belong together in an exact position (second-color inlays and text, multi-material inserts) also need a merged 3MF, because slicers lose the alignment when the user imports separate files. Plan for it from the start: keep body and inlay as separate modules with their own `color()`, and follow "Merged multi-object 3MF" in scad-export.

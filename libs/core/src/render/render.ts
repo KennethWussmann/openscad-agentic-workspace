@@ -6,6 +6,7 @@ import { loadProjectConfig } from '../config/load.ts'
 import { writeJsonAtomic } from '../fs/json.ts'
 import { syncLibraries } from '../libraries/vendor.ts'
 import type { Openscad } from '../openscad/discovery.ts'
+import { resolveSet, setParts } from '../sets/sets.ts'
 import { type Paths, projectLayout } from '../workspace/paths.ts'
 import { extractParams } from './params.ts'
 import { emptyPart, renderPart } from './part.ts'
@@ -19,6 +20,7 @@ export type RenderOptions = {
   kind?: RenderKind
   overrides?: Record<string, DefineValue>
   parts?: string[]
+  set?: string | null
 }
 
 export const renderProject = async (opts: RenderOptions): Promise<RenderResult> => {
@@ -27,8 +29,9 @@ export const renderProject = async (opts: RenderOptions): Promise<RenderResult> 
   const layout = projectLayout(paths, project)
   if (!existsSync(layout.dir)) throw new Error(`Project "${project}" does not exist in ${paths.workspace}`)
   const config = loadProjectConfig(paths, layout.config, project)
-  const outDir = renderDir(paths, project, kind)
-  const previous = readRender(paths, project, kind)
+  const set = resolveSet(config.meta, opts.set)
+  const outDir = renderDir(paths, project, kind, set?.name)
+  const previous = readRender(paths, project, kind, set?.name)
   const overrides = opts.overrides ?? {}
   const work = path.join(layout.temp, `render-${randomBytes(4).toString('hex')}`)
   mkdirSync(work, { recursive: true })
@@ -37,12 +40,15 @@ export const renderProject = async (opts: RenderOptions): Promise<RenderResult> 
   await syncLibraries(paths, config.settings)
   const deps = new Set<string>()
   try {
-    const previewable = config.meta.parts.filter((p) => p.preview)
+    const previewable = setParts(
+      config.meta.parts.filter((p) => p.preview),
+      set,
+    )
     const selected = previewable.filter((p) => !opts.parts || opts.parts.includes(p.id))
     const unknown = (opts.parts ?? []).filter((id) => !config.meta.parts.some((p) => p.id === id))
     if (unknown.length) throw new Error(`Unknown part(s): ${unknown.join(', ')}`)
     const paramsTask = extractParams({ paths, openscad, config, dir: layout.dir, work })
-    const ctx = { paths, openscad, config, dir: layout.dir, work, outDir, overrides, deps }
+    const ctx = { paths, openscad, config, dir: layout.dir, work, outDir, set, overrides, deps }
     const rendered = await pool(selected, concurrency(), (part) =>
       renderPart(
         ctx,
@@ -67,6 +73,7 @@ export const renderProject = async (opts: RenderOptions): Promise<RenderResult> 
     const finishedAt = new Date()
     const result: RenderResult = {
       project,
+      ...(set ? { set: set.name } : {}),
       status: parts.every((p) => p.status === 'ok') ? 'ok' : 'error',
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),

@@ -1,11 +1,14 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { randomBytes } from 'node:crypto'
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import type { Diagnostic, ParamDef } from '@scad/protocol'
+import { loadProjectConfig } from '../config/load.ts'
 import type { ProjectConfig } from '../config/schema.ts'
+import { syncLibraries } from '../libraries/vendor.ts'
 import type { Openscad } from '../openscad/discovery.ts'
 import { mergeParams, parseParamExport } from '../openscad/params.ts'
 import { runOpenscad } from '../openscad/run.ts'
-import type { Paths } from '../workspace/paths.ts'
+import { type Paths, projectLayout } from '../workspace/paths.ts'
 import { concurrency, pool } from './pool.ts'
 
 export type ParamsContext = {
@@ -46,4 +49,17 @@ export const extractParams = async ({
     }
   })
   return { params: mergeParams(lists, hidden), diagnostics }
+}
+
+export const readProjectParams = async (paths: Paths, project: string, openscad: Openscad) => {
+  const layout = projectLayout(paths, project)
+  const config = loadProjectConfig(paths, layout.config, project)
+  const work = path.join(layout.temp, `params-${randomBytes(4).toString('hex')}`)
+  mkdirSync(work, { recursive: true })
+  try {
+    await syncLibraries(paths, config.settings)
+    return { config, ...(await extractParams({ paths, openscad, config, dir: layout.dir, work })) }
+  } finally {
+    rmSync(work, { recursive: true, force: true })
+  }
 }

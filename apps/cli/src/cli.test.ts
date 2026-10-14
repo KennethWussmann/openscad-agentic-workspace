@@ -238,6 +238,81 @@ describe('with OpenSCAD', () => {
     expect(scad('status', 'clip').stdout).toContain('check: pass')
   })
 
+  it('manages parameter sets and renders, checks, exports and releases them', () => {
+    expect(scad('new', 'tray').code).toBe(0)
+    const cfg = path.join(workspace, 'tray', 'config.yaml')
+    expect(scad('sets', 'tray').stdout).toContain('tray has no parameter sets.')
+    const bad = scad('set', 'save', 'tray', 'huge', '-D', 'width=900')
+    expect(bad.code).toBe(1)
+    expect(bad.stderr).toContain('width: 900 is above the maximum 200')
+    expect(scad('set', 'save', 'tray', 'all', '-D', 'width=50').stderr).toContain('"all" is reserved')
+    expect(scad('set', 'bogus', 'tray').code).toBe(2)
+    const saved = scad('set', 'save', 'tray', 'wide', '-D', 'width=80', '-D', 'depth=20', '--label', 'Wide', '--export')
+    expect(saved.code).toBe(0)
+    expect(saved.stdout).toContain('Created set wide')
+    expect(readFileSync(cfg, 'utf8')).toContain('values: { width: 80, depth: 20 }')
+    const listed = json<{ sets: { name: string; changes: { param: string; default: number; value: number }[] }[] }>(
+      'sets',
+      'tray',
+    )
+    expect(listed.data.sets[0].changes).toEqual([
+      { param: 'width', default: 40, value: 80, same: false },
+      { param: 'depth', default: 30, value: 20, same: false },
+    ])
+    const render = json<{ set: string; parts: { model: string; bbox: { size: number[] } }[]; sheet: string }>(
+      'render',
+      'tray',
+      '--set',
+      'wide',
+    )
+    expect(render.data.set).toBe('wide')
+    expect(render.data.parts[0].model).toBe('preview/sets/wide/main.3mf')
+    expect(render.data.parts[0].bbox.size).toEqual([80, 20, 20])
+    expect(render.data.sheet).toMatch(/preview\/sheet-wide\.png$/)
+    expect(scad('render', 'tray', '--set', 'nope').stderr).toContain('Unknown set "nope". Sets: wide')
+    const check = scad('check', 'tray', '--set', 'wide')
+    expect(check.code).toBe(0)
+    expect(check.stdout).toContain('PASS  tray  set wide')
+    expect(check.stdout).toMatch(/report: .*preview\/check-wide\.json/)
+    const snap = json<{ ok: boolean; file: string }>('snapshot', 'tray', '--set', 'wide')
+    expect(snap.data.file).toMatch(/snapshot-auto-wide\.png$/)
+    const exported = json<{ files: { set: string; file: string; ok: boolean }[] }>(
+      'export',
+      'tray',
+      '--sets',
+      'all',
+      '--formats',
+      'stl',
+    )
+    expect(exported.data.files.map((f) => [f.set, f.file, f.ok])).toEqual([
+      ['default', 'out/tray-main.stl', true],
+      ['wide', 'out/tray-main-wide.stl', true],
+    ])
+    expect(scad('export', 'tray', '--set', 'wide', '--sets', 'all').code).toBe(2)
+    const synced = scad('set', 'sync', 'tray')
+    expect(synced.stdout).toContain('native: src/main.json (wide)')
+    expect(JSON.parse(readFileSync(path.join(workspace, 'tray', 'src', 'main.json'), 'utf8'))).toEqual({
+      fileFormatVersion: '1',
+      parameterSets: { wide: { width: '80', depth: '20' } },
+    })
+    expect(scad('set', 'rename-param', 'tray', 'depth', 'deep').stdout).toContain(
+      'WARNING set "wide": deep: not a customizer parameter of src/main.scad',
+    )
+    expect(scad('set', 'unset', 'tray', 'wide', 'deep').stdout).toContain('Unset deep in wide')
+    const released = scad('release', 'tray', '-m', 'Sets', '--formats', 'stl')
+    expect(released.code).toBe(0)
+    expect(released.stdout).toContain('PASS  check  tray  set wide')
+    expect(released.stdout).toMatch(/ok {3}wide main stl {6}out\/tray-main-wide\.stl/)
+    writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}  odd:\n    values: { widht: 3 }\n`)
+    const doctor = scad('doctor')
+    expect(doctor.stdout).toMatch(/WARN {2}sets/)
+    expect(doctor.stdout).toContain('tray: WARNING set "odd": widht: not a customizer parameter')
+    expect(scad('set', 'rm', 'tray', 'odd').stdout).toContain('Removed set odd')
+    expect(json<{ sets: unknown }>('status', 'tray').data.sets).toEqual({
+      wide: { label: 'Wide', values: { width: 80 }, export: true },
+    })
+  })
+
   it('checks islands and trapped resin instead of overhangs for a resin printer', () => {
     writeFileSync(
       path.join(workspace, 'clip', 'src', 'main.scad'),

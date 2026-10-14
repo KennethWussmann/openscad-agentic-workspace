@@ -1,6 +1,19 @@
 # Workspace settings. `pnpm scad doctor` copies this file to config.yaml (gitignored) on first run.
 # Every project can override any of these keys in workspace/<project>/config.yaml.
 # Objects are merged key by key, lists and plain values replace the inherited value.
+#
+# Project-only keys, valid in workspace/<project>/config.yaml but not in this file:
+#   name, description   shown in the viewer and in `pnpm scad list`
+#   parts               the entry files and part selectors that are rendered (see the scad-craft skill)
+#   sets                named parameter sets: recurring variants of the same model, e.g.
+#     sets:
+#       screw-tray:
+#         label: Screw tray                   # optional, shown in the viewer's set dropdown
+#         values: { width: 160, depth: 80 }   # customizer values, checked against the parameters
+#         export: true                        # optional, `pnpm scad release` checks and exports it too
+#         parts: [main]                       # optional, apply the set to these parts only
+#     Later wins: render.defines, then set values, then parts[].defines.
+#     Edit them with `pnpm scad set save|rm|unset|rename-param`, list them with `pnpm scad sets <project>`.
 
 # Third-party OpenSCAD libraries, cloned into workspace/_vendor/<name>@<ref>/<name> and put on OPENSCADPATH.
 # The key is the folder name used in include/use, e.g. include <BOSL2/std.scad>.
@@ -35,7 +48,9 @@ render:
 export:
   # Formats written by `pnpm scad export`: 3mf, stl, asciistl, obj, off, wrl, png, svg, dxf, pdf, csg.
   formats: [3mf, stl]
-  # File name template without extension. Placeholders: {project}, {part}, {version}.
+  # File name template without extension. Placeholders: {project}, {part}, {version}, {set}.
+  # {set} is the parameter set name, or "default" for the model without a set. Without {set} in the
+  # template, files of a set get a -<set> suffix and the default model keeps the plain name.
   filename: "{project}-{part}"
 
 server:

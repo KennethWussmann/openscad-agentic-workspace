@@ -7,6 +7,7 @@ import { serveFile } from '../http/files.ts'
 import { json, type Req, type Res, readBody } from '../http/respond.ts'
 import { exportRoute } from './export.ts'
 import { discardProposalRoute, sendAnnotationsRoute, sendProposalRoute, withdrawAnnotationsRoute } from './proposals.ts'
+import { deleteSetRoute, saveSetRoute } from './sets.ts'
 
 const state = (ctx: ServerContext, res: Res, id: string) => {
   const current = projectState(ctx.paths, id, ctx.coordinator.isRendering(id), ctx.exporting.has(id))
@@ -49,6 +50,8 @@ export const projectRoute = async (
   if (route === 'POST export') return exportRoute(ctx, req, res, id)
   if (route === 'POST tweak') return tweak(ctx, req, res, id)
   if (route === 'DELETE tweak') return clearTweak(ctx, res, id)
+  if (route === 'POST sets') return saveSetRoute(ctx, req, res, id)
+  if (route === 'DELETE sets') return deleteSetRoute(ctx, res, id, parts[3])
   if (route === 'POST proposal') return sendProposalRoute(ctx, req, res, id)
   if (route === 'DELETE proposal') return discardProposalRoute(ctx, res, id)
   if (route === 'POST annotations') return sendAnnotationsRoute(ctx, req, res, id)
