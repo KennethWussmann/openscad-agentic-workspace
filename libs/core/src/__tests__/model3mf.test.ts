@@ -1,8 +1,8 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { deflateRawSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { parseModelXml, read3mf, readZip } from '../index.ts'
+import { exportTitle, name3mf, nameModelXml, parseModelXml, read3mf, readZip, writeZip } from '../index.ts'
 import { tempPaths } from './helpers.ts'
 
 const zip = (files: Record<string, string>, deflate: boolean) => {
@@ -79,5 +79,53 @@ describe('3MF reading', () => {
     const file = path.join(paths.workspace, 'part.3mf')
     writeFileSync(file, zip({ '[Content_Types].xml': '<Types/>', '3D/3dmodel.model': TRIANGLE }, true))
     expect(read3mf(file).index.length).toBe(6)
+  })
+})
+
+const NAMED = `<model>
+  <metadata name="Title" preserve="1">main.scad</metadata>
+  <metadata name="Application" preserve="1">OpenSCAD</metadata>
+  <resources>
+    <object id="2" name="OpenSCAD Model 1" type="model" pid="1" pindex="0"></object>
+    <object id="3" name="OpenSCAD Model 2" type="model" pid="1" pindex="0"></object>
+  </resources>
+</model>`
+
+describe('3MF naming', () => {
+  it('round-trips entries through the zip writer', () => {
+    const files = new Map([
+      ['[Content_Types].xml', Buffer.from('<Types/>')],
+      ['3D/3dmodel.model', Buffer.from('model '.repeat(1000))],
+    ])
+    expect(readZip(writeZip(files))).toEqual(files)
+  })
+
+  it('names the title and numbers several objects', () => {
+    const xml = nameModelXml(NAMED, 'Clip & "Label"')
+    expect(xml).toContain('<metadata name="Title" preserve="1">Clip &amp; &quot;Label&quot;</metadata>')
+    expect(xml).toContain('<metadata name="Application" preserve="1">OpenSCAD</metadata>')
+    expect(xml).toContain('<object id="2" name="Clip &amp; &quot;Label&quot; 1" type="model"')
+    expect(xml).toContain('<object id="3" name="Clip &amp; &quot;Label&quot; 2" type="model"')
+  })
+
+  it('renames a single object in a .3mf file and keeps its mesh', () => {
+    const paths = tempPaths('name3mf')
+    const file = path.join(paths.workspace, 'part.3mf')
+    const model = TRIANGLE.replace('<object id="1" type="model">', '<object id="1" name="OpenSCAD Model" type="model">')
+    writeFileSync(file, zip({ '[Content_Types].xml': '<Types/>', '3D/3dmodel.model': model }, true))
+    name3mf(file, 'Bracket')
+    const files = readZip(readFileSync(file))
+    expect(files.get('[Content_Types].xml')?.toString()).toBe('<Types/>')
+    expect(files.get('3D/3dmodel.model')?.toString()).toContain('<object id="1" name="Bracket" type="model">')
+    expect(read3mf(file).index.length).toBe(6)
+  })
+
+  it('builds the title from project, part, set and tweaks', () => {
+    const part = { id: 'lid', file: 'src/main.scad', defines: {}, preview: true }
+    const set = { name: 'big', def: { values: {}, export: false } }
+    expect(exportTitle('Box', { ...part, id: 'main' }, false, null, false)).toBe('Box')
+    expect(exportTitle('Box', part, true, null, false)).toBe('Box - lid')
+    expect(exportTitle('Box', { ...part, label: 'Lid' }, true, set, true)).toBe('Box - Lid - big - tweaked')
+    expect(exportTitle('Box', part, true, { ...set, def: { ...set.def, label: 'Big' } }, false)).toBe('Box - lid - Big')
   })
 })

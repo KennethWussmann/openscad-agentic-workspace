@@ -17,6 +17,8 @@ pnpm -s scad export <id> --sets all              # the default model and every s
 
 Files go to `workspace/<id>/out/`, named by `export.filename` (default `{project}-{part}`; placeholders `{project}`, `{part}`, `{version}`, `{set}`). `out/export.json` lists every file with its status and set. `{version}` is the latest checkpoint id when the working copy matches it, otherwise `wip`; checkpoint first so delivered files map to a version.
 
+Inside each 3MF, the title and the object names (what Bambu Studio, Orca and PrusaSlicer show in the object list) are set to `<project name> - <part label> - <set label> - tweaked`, leaving out what does not apply: the part only when it has a `label` or the project has several parts, the set only for set exports. Merged multi-object 3MFs number their objects (`... 1`, `... 2`). Give parts a readable `label` in `config.yaml` so the slicer shows good names.
+
 ## Parameter sets
 
 Projects with parameter sets (scad skill, "Parameter sets") export each set as its own files:

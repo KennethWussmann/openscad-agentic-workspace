@@ -10,8 +10,10 @@ import {
   exportProject,
   loadProjectConfig,
   projectLayout,
+  read3mf,
   readCheck,
   readRender,
+  readZip,
   renderProject,
   renderSheet,
 } from '../index.ts'
@@ -126,6 +128,12 @@ describe('with OpenSCAD', () => {
       ['out/kit-lid.stl', true],
     ])
     expect(readFileSync(path.join(layout.out, 'kit-base.stl')).subarray(0, 5).toString()).not.toBe('solid')
+    const model = readZip(readFileSync(path.join(layout.out, 'kit-lid.3mf')))
+      .get('3D/3dmodel.model')
+      ?.toString()
+    expect(model).toMatch(/<metadata name="Title"[^>]*>Kit - lid<\/metadata>/)
+    expect(model).toMatch(/<object [^>]*name="Kit - lid"/)
+    expect(read3mf(path.join(layout.out, 'kit-lid.3mf')).index.length).toBeGreaterThan(0)
     expect(exported.meshCheck).toBeNull()
   })
 

@@ -15,11 +15,12 @@ import { checkModel, checkResult } from '../check/checker.ts'
 import { loadProjectConfig } from '../config/load.ts'
 import { printProfile } from '../config/profile.ts'
 import { writeJsonAtomic } from '../fs/json.ts'
+import { name3mf } from '../mesh/model3mf.ts'
 import { parseDiagnostics } from '../openscad/diagnostics.ts'
 import type { Openscad } from '../openscad/discovery.ts'
 import { baseArgs, defineArgs, runOpenscad } from '../openscad/run.ts'
 import { isRenderCurrent, readRender } from '../render/store.ts'
-import { effectiveDefines, resolveSet, setParts } from '../sets/sets.ts'
+import { type ActiveSet, effectiveDefines, resolveSet, setParts } from '../sets/sets.ts'
 import { listVersions } from '../versions/versions.ts'
 import { renderView, VIEWS } from '../views/views.ts'
 import { type Paths, projectLayout, toPosix } from '../workspace/paths.ts'
@@ -46,6 +47,22 @@ export const exportBaseName = (template: string, values: FileNameValues, tweaked
   const setSuffix = !template.includes('{set}') && values.set !== DEFAULT_SET ? `-${values.set}` : ''
   return `${fileName(template, values)}${setSuffix}${tweaked ? '-tweaked' : ''}`
 }
+
+export const exportTitle = (
+  project: string,
+  part: PartDef,
+  multiPart: boolean,
+  set: ActiveSet | null,
+  tweaked: boolean,
+) =>
+  [
+    project,
+    part.label ?? (multiPart ? part.id : null),
+    set ? (set.def.label ?? set.name) : null,
+    tweaked ? 'tweaked' : null,
+  ]
+    .filter(Boolean)
+    .join(' - ')
 
 export const currentVersionLabel = (paths: Paths, project: string) => {
   const render = readRender(paths, project)
@@ -113,7 +130,10 @@ export const exportProject = async (opts: ExportOptions): Promise<ExportResult> 
         const outputs = multi.map((f) => target(f))
         const result = await run(outputs, null)
         multi.forEach((format, i) => {
-          add(format, outputs[i], result.ok && existsSync(outputs[i]), result.diagnostics)
+          const ok = result.ok && existsSync(outputs[i])
+          if (ok && format === '3mf')
+            name3mf(outputs[i], exportTitle(config.meta.name, part, config.meta.parts.length > 1, set, tweaked))
+          add(format, outputs[i], ok, result.diagnostics)
         })
       }
       if (formats.includes('stl')) {
