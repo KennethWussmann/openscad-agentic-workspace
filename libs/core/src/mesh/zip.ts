@@ -1,4 +1,4 @@
-import { inflateRawSync } from 'node:zlib'
+import { crc32, deflateRawSync, inflateRawSync } from 'node:zlib'
 
 const EOCD = 0x06054b50
 const CENTRAL = 0x02014b50
@@ -72,4 +72,49 @@ export const readZip = (buf: Buffer) => {
     else throw new Error(`Unsupported zip compression ${method} in ${name}`)
   }
   return files
+}
+
+export const writeZip = (files: Map<string, Buffer>) => {
+  const chunks: Buffer[] = []
+  const centrals: Buffer[] = []
+  let offset = 0
+  for (const [name, raw] of files) {
+    const data = deflateRawSync(raw)
+    const nameBuf = Buffer.from(name)
+    const crc = crc32(raw)
+    if (offset + 30 + nameBuf.length + data.length > MAX32) throw new Error('Zip archive too large')
+    const local = Buffer.alloc(30)
+    local.writeUInt32LE(LOCAL, 0)
+    local.writeUInt16LE(20, 4)
+    local.writeUInt16LE(0x0800, 6)
+    local.writeUInt16LE(8, 8)
+    local.writeUInt16LE(0x0021, 12)
+    local.writeUInt32LE(crc, 14)
+    local.writeUInt32LE(data.length, 18)
+    local.writeUInt32LE(raw.length, 22)
+    local.writeUInt16LE(nameBuf.length, 26)
+    const central = Buffer.alloc(46)
+    central.writeUInt32LE(CENTRAL, 0)
+    central.writeUInt16LE(20, 4)
+    central.writeUInt16LE(20, 6)
+    central.writeUInt16LE(0x0800, 8)
+    central.writeUInt16LE(8, 10)
+    central.writeUInt16LE(0x0021, 14)
+    central.writeUInt32LE(crc, 16)
+    central.writeUInt32LE(data.length, 20)
+    central.writeUInt32LE(raw.length, 24)
+    central.writeUInt16LE(nameBuf.length, 28)
+    central.writeUInt32LE(offset, 42)
+    chunks.push(local, nameBuf, data)
+    centrals.push(central, nameBuf)
+    offset += local.length + nameBuf.length + data.length
+  }
+  const directory = Buffer.concat(centrals)
+  const end = Buffer.alloc(22)
+  end.writeUInt32LE(EOCD, 0)
+  end.writeUInt16LE(files.size, 8)
+  end.writeUInt16LE(files.size, 10)
+  end.writeUInt32LE(directory.length, 12)
+  end.writeUInt32LE(offset, 16)
+  return Buffer.concat([...chunks, directory, end])
 }

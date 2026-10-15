@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { readZip } from './zip.ts'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { readZip, writeZip } from './zip.ts'
 
 export type MeshData = {
   positions: Float64Array
@@ -84,9 +84,35 @@ export const parseModelXml = (xml: string): MeshData => {
   return { positions: Float64Array.from(positions), index: Uint32Array.from(index) }
 }
 
-export const read3mf = (file: string): MeshData => {
-  const files = readZip(readFileSync(file))
+const modelEntry = (files: Map<string, Buffer>, file: string) => {
   const model = [...files.keys()].find((name) => /\.model$/i.test(name) && /^3D\//i.test(name))
   if (!model) throw new Error(`No 3D model found in ${file}`)
-  return parseModelXml((files.get(model) as Buffer).toString('utf8'))
+  return model
+}
+
+export const read3mf = (file: string): MeshData => {
+  const files = readZip(readFileSync(file))
+  return parseModelXml((files.get(modelEntry(files, file)) as Buffer).toString('utf8'))
+}
+
+const escapeXml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+export const nameModelXml = (xml: string, name: string) => {
+  const escaped = escapeXml(name)
+  const count = [...xml.matchAll(/<object\b[^>]*\bname="/g)].length
+  let n = 0
+  return xml
+    .replace(
+      /(<metadata\b[^>]*\bname="Title"[^>]*>)[^<]*(<\/metadata>)/,
+      (_, open, close) => `${open}${escaped}${close}`,
+    )
+    .replace(/(<object\b[^>]*\bname=")[^"]*"/g, (_, head) => `${head}${escaped}${count > 1 ? ` ${++n}` : ''}"`)
+}
+
+export const name3mf = (file: string, name: string) => {
+  const files = readZip(readFileSync(file))
+  const model = modelEntry(files, file)
+  files.set(model, Buffer.from(nameModelXml((files.get(model) as Buffer).toString('utf8'), name)))
+  writeFileSync(file, writeZip(files))
 }
