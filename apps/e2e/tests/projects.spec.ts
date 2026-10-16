@@ -1,9 +1,10 @@
 import { createProject, expect, test, uniqueId } from '../src/fixtures.ts'
 
-test('lists projects on the empty table and opens one', async ({ page, viewer, project }) => {
+test('lists projects as cards on the start page and opens one', async ({ page, viewer, project }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Nothing on the table/ })).toBeVisible()
-  await page.getByRole('button', { name: new RegExp(`${project.id} /`) }).click()
+  await expect(page.getByRole('heading', { name: /On the bench/ })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Project' })).toHaveCount(0)
+  await page.getByRole('button', { name: new RegExp(project.name) }).click()
   await expect(page).toHaveURL(new RegExp(`\\?project=${project.id}$`))
   await viewer.waitRendered()
   await expect(viewer.canvas).toBeVisible()

@@ -14,6 +14,7 @@ import {
 import type { ViteDevServer } from 'vite'
 import type { ServerContext } from './context.ts'
 import { createCoordinator } from './coordinator.ts'
+import { createCovers } from './covers.ts'
 import { createDebouncer } from './debounce.ts'
 import { json } from './http/respond.ts'
 import { createPresence } from './presence.ts'
@@ -42,6 +43,12 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
   const tweaks = new Map<string, Record<string, DefineValue>>()
   const send = <T>(event: string, data: T) => server.ws.send({ type: 'custom', event, data })
 
+  const debounce = createDebouncer(debounceMs)
+  const changed = (project: string) =>
+    debounce(`changed:${project}`, () => send<ChangedEvent>(EVENTS.changed, { project }), 150)
+  const covers = createCovers(paths, changed)
+  setTimeout(covers.backfill, 500)
+
   const coordinator = createCoordinator(async (project, kind, overrides, force) => {
     if (!force && kind === 'preview') {
       const current = readRender(paths, project)
@@ -56,15 +63,13 @@ export const createScadServer = (server: ViteDevServer, paths: Paths, debounceMs
       result = failed(project, e)
     }
     send<RenderEvent>(EVENTS.render, { project, kind, result })
+    if (kind === 'preview' && result.status === 'ok') covers.request(project)
     return result
   })
 
   const request = (project: string, kind: RenderKind, force = true) =>
     coordinator.request(project, kind, kind === 'tweak' ? (tweaks.get(project) ?? {}) : {}, force)
 
-  const debounce = createDebouncer(debounceMs)
-  const changed = (project: string) =>
-    debounce(`changed:${project}`, () => send<ChangedEvent>(EVENTS.changed, { project }), 150)
   const sourcesChanged = (project: string) =>
     debounce(`render:${project}`, () => {
       if (!projectExists(paths, project)) return

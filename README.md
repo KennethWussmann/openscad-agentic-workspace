@@ -5,7 +5,7 @@ A workspace for building parametric 3D models together with a coding agent. The 
 > [!WARNING]
 > This entire project is vibe coded. I did not write or read any of the code myself. Use it at your own risk.
 
-![The viewer with parameters, view tools, bounding box dimensions and the version timeline](docs/assets/viewer.jpg)
+![The start page: a grid of project cards with rendered previews, dimensions, part and version counts and print check status](docs/assets/start-page.jpg)
 
 ## Setup
 
@@ -36,7 +36,7 @@ flowchart LR
     agent -->|writes| src["workspace/#lt;project#gt;/src/*.scad"]
     agent -->|pnpm scad render| cli[OpenSCAD CLI]
     src --> cli
-    cli --> preview["preview/<br/>*.3mf, sheet.png, snapshots"]
+    cli --> preview["preview/<br/>*.3mf, sheet.png, cover.png, snapshots"]
     preview -->|contact sheet, sections| agent
     preview -->|pnpm scad check| check["check.json<br/>manifold, bed, overhangs, walls"]
     check --> agent
@@ -67,6 +67,9 @@ flowchart LR
 
 ## Viewer
 
+![The viewer with parameters, view tools, bounding box dimensions and the version timeline](docs/assets/viewer.jpg)
+
+- **Start page:** every project is a card with a product-style preview image, its description, size, part and version counts and the print check result. The preview (`preview/cover.png`) is rendered after every successful render, in the background, and the cards update live. A filter box and a recent/name sort help once the workspace grows. The logo in the top bar leads back to this page.
 - **View cube:** snaps to faces, edges and corners. Keys: 0 iso, 1 front, 2 top, 3 right, 4 back, 5 bottom, 6 left. F fits the model, O toggles ortho/perspective.
 - **Section view:** X, Y or Z plane, or a free plane moved with a gizmo. The cut faces are drawn as hatched caps. A separate X-ray mode shows the inside.
 - **Display:** edges, wireframe, build plate, and bounding box dimensions in mm. The plate has the active printer's bed size and sits centred under the model, the way a slicer places it. A dashed box shows the build volume, labelled with the printer name. The outline and the dimensions turn red when the model does not fit.
@@ -199,7 +202,7 @@ workspace/                    gitignored
   <project>/
     config.yaml  brief.md
     src/                      OpenSCAD sources (source of truth)
-    preview/                  current render: models, render.json, sheet.png, snapshots, check.json
+    preview/                  current render: models, render.json, sheet.png, cover.png, snapshots, check.json
     versions/vNNN/            checkpoints
     proposals/                from the viewer: params.json, annotations.json + annotations.png
     out/                      exports

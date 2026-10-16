@@ -15,8 +15,11 @@ beforeEach(() => {
 it('lists projects on the empty table and opens one', async () => {
   vi.spyOn(api, 'project').mockImplementation(async (id) => project({ id, name: id === 'lid' ? 'Lid' : 'Box' }))
   render(<App />)
-  expect(screen.getByRole('heading', { name: /Nothing on the table/ })).toBeInTheDocument()
-  fireEvent.click(await screen.findByRole('button', { name: /lid \/ 2 versions/ }))
+  expect(await screen.findByRole('heading', { name: /On the bench/ })).toBeInTheDocument()
+  expect(screen.queryByRole('combobox', { name: 'Project' })).not.toBeInTheDocument()
+  expect(screen.queryByTitle('Console (C)')).not.toBeInTheDocument()
+  expect(screen.queryByTitle('Keys (?)')).not.toBeInTheDocument()
+  fireEvent.click(await screen.findByRole('button', { name: /Lid/ }))
   expect(await screen.findByTestId('stage')).toBeInTheDocument()
   expect(screen.getByRole('heading', { name: 'Parts' })).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Project' })).toHaveValue('lid')
