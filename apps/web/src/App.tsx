@@ -1,7 +1,7 @@
 import { cx } from './components/classes.ts'
 import { Hint } from './components/Hint.tsx'
 import { Help } from './features/overlays/Help.tsx'
-import { Empty } from './features/projects/Empty.tsx'
+import { Start } from './features/projects/Start.tsx'
 import { Sidebar } from './features/sidebar/Sidebar.tsx'
 import { Stage } from './features/stage/Stage.tsx'
 import { TopBar } from './features/topbar/TopBar.tsx'
@@ -34,7 +34,7 @@ export const App = () => {
             <Hint tone="error">{error}</Hint>
           </div>
         ) : (
-          <Empty />
+          <Start />
         )}
       </main>
       <Help />

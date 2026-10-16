@@ -1,7 +1,8 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
-import { isProjectId, type ProjectState, type ProjectSummary } from '@scad/protocol'
+import { isProjectId, type ProjectState, type ProjectSummary, type RenderResult, type Vec3 } from '@scad/protocol'
 import { parseDocument, stringify } from 'yaml'
+import { readCheck } from '../check/checker.ts'
 import { loadProjectConfig } from '../config/load.ts'
 import { printProfile } from '../config/profile.ts'
 import { hasProposals, readProposals } from '../proposals/proposals.ts'
@@ -61,6 +62,14 @@ export const createProject = ({ paths, id, name, description = '', from }: Creat
   return layout
 }
 
+const overallSize = (render: RenderResult): Vec3 | null => {
+  const boxes = render.parts.flatMap((p) => (p.bbox ? [p.bbox] : []))
+  if (!boxes.length) return null
+  const min = [0, 1, 2].map((k) => Math.min(...boxes.map((b) => b.min[k])))
+  const max = [0, 1, 2].map((k) => Math.max(...boxes.map((b) => b.max[k])))
+  return [max[0] - min[0], max[1] - min[1], max[2] - min[2]]
+}
+
 export const listProjects = (paths: Paths): ProjectSummary[] => {
   if (!existsSync(paths.workspace)) return []
   return readdirSync(paths.workspace)
@@ -89,6 +98,11 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
         status: render ? render.status : 'unrendered',
         versions: listVersions(paths, id).length,
         proposal: hasProposals(paths, id),
+        cover: existsSync(layout.cover) ? statSync(layout.cover).mtimeMs : null,
+        parts: render?.parts.length ?? 0,
+        size: render ? overallSize(render) : null,
+        facets: render ? render.parts.reduce((n, p) => n + (p.facets ?? 0), 0) : null,
+        check: readCheck(paths, id)?.status ?? null,
       }
     })
     .sort((a, b) => b.updated - a.updated)

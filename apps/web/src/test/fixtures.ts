@@ -120,5 +120,10 @@ export const summary = (overrides: Partial<ProjectSummary> = {}): ProjectSummary
   status: 'ok',
   versions: 0,
   proposal: false,
+  cover: null,
+  parts: 1,
+  size: [20, 10, 5],
+  facets: 12,
+  check: null,
   ...overrides,
 })

@@ -1,4 +1,5 @@
 import {
+  generateCover,
   isDirty,
   listVersions,
   loadProjectConfig,
@@ -21,6 +22,7 @@ export const render = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const set = flags.set ? requireSet(meta, flags.set) : null
   const { result, server } = await renderViaServerOrLocal(paths, project, partsFlag(flags), set?.name)
   const setIssues = validateSets(meta, result.params)
+  if (!server && !set && result.status === 'ok') await generateCover(paths, project, result)
   const wantSheet = flags.sheet ?? settingsFor(paths, project).render.sheet
   const sheet = wantSheet && result.parts.some((p) => p.model) ? await sheetFor(paths, project, result) : null
   const dirty = isDirty(paths, project)

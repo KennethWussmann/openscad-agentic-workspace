@@ -74,6 +74,17 @@ describe('3MF reading', () => {
     ])
   })
 
+  it('reads triangle colors and treats the OpenSCAD default as uncolored', () => {
+    const xml = `<model><resources>
+      <basematerials id="1"><base name="Default" displaycolor="#F9D72CFF"/><base name="Color 1" displaycolor="#4C8CCCFF"/></basematerials>
+      <object id="1" type="model" pid="1" pindex="0"><mesh>
+        <vertices><vertex x="0" y="0" z="0" /><vertex x="1" y="0" z="0" /><vertex x="0" y="1" z="0" /></vertices>
+        <triangles><triangle v1="0" v2="1" v3="2" pid="1" p1="1" /><triangle v1="0" v2="1" v3="2" /></triangles>
+      </mesh></object>
+    </resources></model>`
+    expect([...parseModelXml(xml).colors]).toEqual([0x4c8ccc, -1])
+  })
+
   it('reads a model from a .3mf file', () => {
     const paths = tempPaths('mesh3mf')
     const file = path.join(paths.workspace, 'part.3mf')

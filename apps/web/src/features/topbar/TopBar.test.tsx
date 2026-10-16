@@ -11,6 +11,7 @@ const s = () => useStore.getState()
 
 describe('TopBar', () => {
   it('switches projects and marks pending proposals', () => {
+    useStore.setState({ projectId: 'box' })
     render(<TopBar projects={projects} project={null} />)
     const picker = screen.getByRole('combobox', { name: 'Project' })
     expect(screen.getByRole('option', { name: 'Lid (lid) *' })).toBeInTheDocument()
@@ -20,14 +21,23 @@ describe('TopBar', () => {
     expect(s().projectId).toBeNull()
   })
 
-  it('hides project actions without a project', () => {
+  it('shows only the logo on the start page', () => {
     render(<TopBar projects={projects} project={null} />)
-    expect(screen.queryByRole('button', { name: 'Render now' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Export/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Keys (?)' })).toBeInTheDocument()
+    expect(screen.getByText('scad')).toBeInTheDocument()
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button')).toHaveLength(1)
+    expect(screen.queryByText('not rendered')).not.toBeInTheDocument()
+  })
+
+  it('returns to the start page from the logo', () => {
+    useStore.setState({ projectId: 'box' })
+    render(<TopBar projects={projects} project={project()} />)
+    fireEvent.click(screen.getByRole('button', { name: /scad/ }))
+    expect(s().projectId).toBeNull()
   })
 
   it('renders, toggles the console, help and viewport mode', () => {
+    useStore.setState({ projectId: 'box' })
     const renderNow = vi.spyOn(api, 'render').mockResolvedValue(renderResult())
     render(<TopBar projects={projects} project={project()} />)
     expect(screen.getByText('A plain box')).toBeInTheDocument()

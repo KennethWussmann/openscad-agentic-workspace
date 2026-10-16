@@ -47,6 +47,7 @@ export const projectLayout = (paths: Paths, id: string) => {
     preview: path.join(dir, 'preview'),
     renderFile: path.join(dir, 'preview', 'render.json'),
     sheet: path.join(dir, 'preview', 'sheet.png'),
+    cover: path.join(dir, 'preview', 'cover.png'),
     out: path.join(dir, 'out'),
     versions: path.join(dir, 'versions'),
     proposals: path.join(dir, 'proposals'),
