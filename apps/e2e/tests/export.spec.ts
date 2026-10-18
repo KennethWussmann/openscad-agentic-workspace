@@ -18,7 +18,7 @@ test('exports a checked 3MF and downloads it', async ({ page, viewer, project })
 
 test('asks whether to export the source or the tweaked model', async ({ page, viewer, project }) => {
   await viewer.open(project.id)
-  await viewer.param('width').fill('25')
+  await viewer.setParam('width', '25')
   await expect(viewer.envelope).toContainText('25.00 x 10.00 x 5.00')
   await page.getByRole('button', { name: 'Export 3MF (source or with tweaks)' }).click()
   await expect(page.getByRole('button', { name: /Export source/ })).toBeVisible()

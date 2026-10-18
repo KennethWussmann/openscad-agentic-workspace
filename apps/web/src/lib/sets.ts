@@ -1,5 +1,6 @@
-import type { DefineValue, ParamDef, ProjectState } from '@scad/protocol'
+import { type DefineValue, formatQuantity, type ParamDef, type ProjectState, UNITS, type Unit } from '@scad/protocol'
 import { sameJson } from './format.ts'
+import { BROWSER_LOCALE } from './locale.ts'
 
 type Values = Record<string, DefineValue>
 
@@ -26,4 +27,8 @@ export const slugify = (label: string) =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 40)
 
-export const fmtValue = (v: DefineValue) => (typeof v === 'string' ? `"${v}"` : JSON.stringify(v))
+export const fmtValue = (v: DefineValue, unit?: Unit, locale = BROWSER_LOCALE) => {
+  if (typeof v === 'string') return `"${v}"`
+  if (typeof v === 'number') return formatQuantity(v, unit, locale)
+  return unit ? `${JSON.stringify(v)} ${UNITS[unit].label}` : JSON.stringify(v)
+}

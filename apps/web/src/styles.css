@@ -604,11 +604,64 @@ code {
   border-color: var(--red);
 }
 
+.quantity {
+  display: grid;
+  gap: 3px;
+}
+
+.quantity-field {
+  display: flex;
+  align-items: center;
+  background: var(--bg-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+}
+
+.quantity-field:focus-within {
+  border-color: var(--cyan-dim);
+}
+
+.quantity-field.is-bad {
+  border-color: var(--red);
+}
+
+.param .quantity-field input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+}
+
+.param .quantity-field input[role="spinbutton"] {
+  text-align: right;
+}
+
+.quantity-unit {
+  padding: 0 7px 0 0;
+  color: var(--dim);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.param .quantity-error {
+  color: var(--red);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .num {
   display: grid;
-  grid-template-columns: 1fr 76px;
-  gap: 8px;
+  grid-template-columns: 1fr 104px;
+  gap: 6px 8px;
   align-items: center;
+}
+
+.num .quantity {
+  display: contents;
+}
+
+.num .quantity-error {
+  grid-column: 1 / -1;
 }
 
 .num:has(> :only-child) {

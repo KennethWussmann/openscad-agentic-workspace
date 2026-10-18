@@ -36,7 +36,7 @@ const ParamField = ({ def, setValues }: { def: ParamDef; setValues: Record<strin
         <span className="mono">{def.name}</span>
         {inSet && (
           <span className="param-default mono" title="Default from the source">
-            default {fmtValue(def.initial)}
+            default {fmtValue(def.initial, def.unit)}
           </span>
         )}
         {isEdited && (
