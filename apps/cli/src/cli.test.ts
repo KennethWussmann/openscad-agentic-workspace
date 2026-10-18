@@ -149,6 +149,7 @@ describe('with OpenSCAD', () => {
     expect(render.code).toBe(0)
     expect(render.data.status).toBe('ok')
     expect(render.data.sheet).toMatch(/preview\/sheet\.png$/)
+    expect(scad('params', 'clip').stdout).toMatch(/Dimensions +width +40 +mm +5\.\.200 step 1 +Outer width along X\n/)
     expect(scad('status', 'clip').stdout).toContain('check: not run yet')
     const check = json<{ status: string; parts: { id: string; manifold: { status: string } }[] }>('check', 'clip')
     expect(check.code).toBe(0)

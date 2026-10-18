@@ -1,4 +1,5 @@
 import type { BBox } from './geometry.ts'
+import type { Unit } from './units.ts'
 
 export type DefineValue = number | string | boolean | DefineValue[]
 
@@ -45,6 +46,7 @@ export type ParamDef = {
   type: 'number' | 'string' | 'boolean' | 'vector'
   initial: DefineValue
   caption?: string
+  unit?: Unit
   group?: string
   min?: number
   max?: number

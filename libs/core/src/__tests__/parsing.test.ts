@@ -74,6 +74,10 @@ describe('parseParamExport', () => {
         { group: 'Parameters', initial: true, name: 'round', type: 'boolean' },
         { group: 'Size', initial: [1, 2, 3], name: 'v', type: 'number' },
         { group: 'Size', initial: 'a', name: 'mode', type: 'string', options: [{ name: 'A', value: 'a' }] },
+        { caption: 'Cable length (mm)', initial: 1000, name: 'len', type: 'number' },
+        { caption: '(deg)', initial: [0, 90], name: 'tilt', type: 'number' },
+        { caption: 'Pocket (generic)', initial: 3, name: 'pocket', type: 'number' },
+        { caption: 'Label (mm)', initial: 'x', name: 'label', type: 'string' },
       ],
     })
     expect(parseParamExport(json)).toEqual([
@@ -81,6 +85,10 @@ describe('parseParamExport', () => {
       { name: 'round', type: 'boolean', initial: true },
       { name: 'v', type: 'vector', initial: [1, 2, 3], group: 'Size' },
       { name: 'mode', type: 'string', initial: 'a', group: 'Size', options: [{ name: 'A', value: 'a' }] },
+      { name: 'len', type: 'number', initial: 1000, caption: 'Cable length', unit: 'mm' },
+      { name: 'tilt', type: 'vector', initial: [0, 90], unit: 'deg' },
+      { name: 'pocket', type: 'number', initial: 3, caption: 'Pocket (generic)' },
+      { name: 'label', type: 'string', initial: 'x', caption: 'Label (mm)' },
     ])
   })
 })

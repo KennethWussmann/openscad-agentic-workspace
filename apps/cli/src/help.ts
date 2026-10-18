@@ -22,7 +22,7 @@ Projects
                                           -D renders the parts with these parameter values into a throwaway model
                                           for this image only (e.g. -D part=assembly); preview/, check and export
                                           are untouched. --set uses a parameter set's values (below part defines)
-  params <project>                        Customizer parameters with values, ranges and options
+  params <project>                        Customizer parameters with values, units, ranges and options
   printer [project]                       Active printer profile (process, bed, nozzle, tolerances) and all printers
   check <project> [--part a,b] [--all] [--set <set>]
                                           Printability against the active printer: manifold, bed fit, thin walls,

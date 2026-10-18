@@ -2,6 +2,7 @@ import type { DefineValue, ParamDef } from '@scad/protocol'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { expect, it, vi } from 'vitest'
 import { param } from '../../test/fixtures.ts'
+import { enterValue } from '../../test/input.ts'
 import { ParamInput } from './ParamInput.tsx'
 
 const setup = (def: ParamDef, value: DefineValue = def.initial) => {
@@ -12,7 +13,7 @@ const setup = (def: ParamDef, value: DefineValue = def.initial) => {
 
 it('edits numbers through the field and the slider', () => {
   const onChange = setup(param({ min: 10, max: 50, step: 1 }))
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'width' }), { target: { value: '32' } })
+  enterValue(screen.getByRole('spinbutton', { name: 'width' }), '32')
   fireEvent.change(screen.getByRole('slider', { name: 'width slider' }), { target: { value: '40' } })
   expect(onChange.mock.calls).toEqual([[32], [40]])
 })
@@ -20,8 +21,18 @@ it('edits numbers through the field and the slider', () => {
 it('omits the slider without a range and ignores an empty field', () => {
   const onChange = setup(param())
   expect(screen.queryByRole('slider')).not.toBeInTheDocument()
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'width' }), { target: { value: '' } })
+  const field = screen.getByRole('spinbutton', { name: 'width' })
+  enterValue(field, '')
+  expect(field).toHaveAttribute('aria-invalid', 'true')
   expect(onChange).not.toHaveBeenCalled()
+})
+
+it('shows the unit and converts other units into it', () => {
+  const onChange = setup(param({ unit: 'mm', min: 10, max: 5000 }))
+  expect(screen.getByText('mm')).toBeInTheDocument()
+  const field = screen.getByRole('spinbutton', { name: 'width' })
+  enterValue(field, '1 m')
+  expect(onChange).toHaveBeenCalledWith(1000)
 })
 
 it('toggles booleans', () => {
@@ -43,9 +54,10 @@ it('picks from options and keeps their value types', () => {
 })
 
 it('accepts only arrays as vectors and flags bad input', () => {
-  const onChange = setup(param({ name: 'offset', type: 'vector', initial: [1, 2] }))
+  const onChange = setup(param({ name: 'offset', type: 'vector', initial: [1, 2], unit: 'mm' }))
   const field = screen.getByRole('textbox', { name: 'offset' })
   expect(field).toHaveValue('[1,2]')
+  expect(screen.getByText('mm')).toBeInTheDocument()
   fireEvent.change(field, { target: { value: '[1, 2' } })
   expect(field).toHaveAttribute('aria-invalid', 'true')
   fireEvent.change(field, { target: { value: '5' } })

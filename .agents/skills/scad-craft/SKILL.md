@@ -28,19 +28,19 @@ Top to bottom, always in this order:
 // Holds 2-6 mm cables under a desk edge.
 
 /* [Cable] */
-// Diameter of the cable to hold
+// Diameter of the cable to hold (mm)
 cable_d = 5; // [2:0.5:12]
 // How many cables side by side
 cable_count = 2; // [1:1:6]
 
 /* [Mount] */
-// Desk board thickness the clip slides onto
+// Desk board thickness the clip slides onto (mm)
 board_t = 18; // [10:0.5:40]
-// Wall thickness of the clip body
+// Wall thickness of the clip body (mm)
 wall = 2.4; // [1.2:0.2:5]
 
 /* [Print] */
-// Gap per side for sliding fits, default is tolerances.sliding from `pnpm -s scad printer`
+// Gap per side for sliding fits, default is tolerances.sliding from `pnpm -s scad printer` (mm)
 clearance = 0.3; // [0:0.05:1]
 part = "clip"; // [clip, cover, assembly]
 
@@ -74,7 +74,8 @@ module cover() { ... }
 Rules behind it:
 
 - Customizer parameters are top-level assignments with literal values placed before the first `module` or `function` definition. They show up in the viewer's parameter panel and in `pnpm -s scad params`. Anything after the first module definition, any computed expression and everything under `/* [Hidden] */` is not a parameter.
-- Group parameters with `/* [Group] */`. Put a one-line `// caption` directly above each parameter; it becomes the label in the viewer. Add ranges `// [min:step:max]` or option lists `// [a, b, c]` so the user can tweak safely.
+- Group parameters with `/* [Group] */`. Put a one-line `// caption` directly above each parameter; the viewer shows it as the description under the parameter name. Add ranges `// [min:step:max]` or option lists `// [a, b, c]` so the user can tweak safely.
+- End the caption of every number or vector parameter that has a unit with the unit in parentheses: `(mm)`, `(deg)` or `(%)`; `cm`, `m`, `in`, `ft` and `rad` are understood too. OpenSCAD's customizer shows it as part of the caption; the viewer takes it off the caption, shows it next to the value, and converts values the user types in other units of the same kind (`1 m`, `2,5 cm`, `90°`) and simple arithmetic (`1 m - 3 cm`, `100 cm * 2`) into the parameter's unit. Keep lengths in mm. Counts, factors and other unitless numbers get no unit. Only a known unit in the last parentheses counts, so `// Gap per side (default from the printer)` stays a plain caption.
 - Derived values live in `/* [Hidden] */`, computed from parameters. Never repeat a magic number; if a number appears twice, it is a parameter or a derived value.
 - Name with units in mind and be explicit: `wall`, `hole_d`, `screw_head_d`, `lid_h`, `fillet_r`. `_d` diameter, `_r` radius, `_h` height, `_t` thickness, `_w` width, `_l` length.
 - Modules take what they need as arguments with sensible defaults. Only the top-level `main()` reads globals; reusable modules never do.

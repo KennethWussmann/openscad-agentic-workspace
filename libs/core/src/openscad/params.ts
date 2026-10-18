@@ -1,4 +1,4 @@
-import type { DefineValue, ParamDef, ParamOption } from '@scad/protocol'
+import { type DefineValue, type ParamDef, type ParamOption, splitCaptionUnit } from '@scad/protocol'
 
 type RawParam = {
   name: string
@@ -23,7 +23,10 @@ export const parseParamExport = (json: string): ParamDef[] => {
           ? 'string'
           : 'number'
     const def: ParamDef = { name: p.name, type, initial: p.initial }
-    if (p.caption) def.caption = p.caption
+    const { caption, unit } =
+      p.caption && (type === 'number' || type === 'vector') ? splitCaptionUnit(p.caption) : { caption: p.caption }
+    if (caption) def.caption = caption
+    if (unit) def.unit = unit
     if (p.group && p.group !== 'Parameters') def.group = p.group
     if (typeof p.min === 'number') def.min = p.min
     if (typeof p.max === 'number') def.max = p.max
