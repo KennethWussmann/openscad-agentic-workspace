@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest'
 import { api } from '../../api/client.ts'
 import { useStore } from '../../store/store.ts'
 import { param, partResult, project, renderResult } from '../../test/fixtures.ts'
+import { enterValue } from '../../test/input.ts'
 import { ParamsPanel } from './ParamsPanel.tsx'
 
 const params = [
@@ -17,7 +18,7 @@ const s = () => useStore.getState()
 it('groups parameters and shows their captions', () => {
   render(<ParamsPanel project={withParams()} />)
   const size = screen.getByRole('group', { name: 'Size' })
-  expect(within(size).getByRole('spinbutton', { name: 'width' })).toHaveValue(20)
+  expect(within(size).getByRole('spinbutton', { name: 'width' })).toHaveValue('20')
   expect(within(size).getByText('Outer width')).toBeInTheDocument()
   expect(within(screen.getByRole('group', { name: 'Parameters' })).getByRole('switch', { name: 'lid' })).toBeVisible()
   expect(screen.getByText('3')).toHaveClass('count')
@@ -31,10 +32,10 @@ it('explains when there are no parameters', () => {
 it('records edits, drops edits back to the initial value and resets single values', () => {
   render(<ParamsPanel project={withParams()} />)
   const width = screen.getByRole('spinbutton', { name: 'width' })
-  fireEvent.change(width, { target: { value: '30' } })
+  enterValue(width, '30')
   expect(s().edits).toEqual({ width: 30 })
   expect(screen.getByText('1 tweaked')).toBeInTheDocument()
-  fireEvent.change(width, { target: { value: '20' } })
+  enterValue(width, '20')
   expect(s().edits).toEqual({})
   fireEvent.click(screen.getByRole('switch', { name: 'lid' }))
   fireEvent.click(screen.getByRole('button', { name: 'Reset lid' }))
@@ -44,7 +45,7 @@ it('records edits, drops edits back to the initial value and resets single value
 it('sends tweaks with a note to the agent', async () => {
   const send = vi.spyOn(api, 'sendProposal').mockResolvedValue({ ok: true, file: 'proposals/params.json' })
   render(<ParamsPanel project={withParams()} />)
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'depth' }), { target: { value: '15' } })
+  enterValue(screen.getByRole('spinbutton', { name: 'depth' }), '15')
   const note = screen.getByPlaceholderText('Note for the agent (optional)')
   fireEvent.change(note, { target: { value: 'deeper' } })
   await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Send to agent' })))
@@ -55,7 +56,7 @@ it('sends tweaks with a note to the agent', async () => {
 it('resets all tweaks and clears the server side tweak', () => {
   const clear = vi.spyOn(api, 'clearTweak').mockResolvedValue({ ok: true })
   render(<ParamsPanel project={withParams()} />)
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'depth' }), { target: { value: '15' } })
+  enterValue(screen.getByRole('spinbutton', { name: 'depth' }), '15')
   fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
   expect(s().edits).toEqual({})
   expect(clear).toHaveBeenCalledWith('box')
@@ -93,7 +94,7 @@ it('hides the set bar for projects without sets until something is tweaked', () 
   render(<ParamsPanel project={withParams()} />)
   expect(screen.queryByRole('combobox', { name: 'Parameter set' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Save as set/ })).not.toBeInTheDocument()
-  fireEvent.change(screen.getByRole('spinbutton', { name: 'width' }), { target: { value: '30' } })
+  enterValue(screen.getByRole('spinbutton', { name: 'width' }), '30')
   expect(screen.getByRole('button', { name: /Save as set/ })).toBeInTheDocument()
 })
 
@@ -102,19 +103,19 @@ it('loads a set as the baseline and marks values that differ from it', () => {
   fireEvent.change(screen.getByRole('combobox', { name: 'Parameter set' }), { target: { value: 'tray' } })
   expect(s().activeSet).toBe('tray')
   const width = screen.getByRole('spinbutton', { name: 'width' })
-  expect(width).toHaveValue(40)
+  expect(width).toHaveValue('40')
   expect(width.closest('.param')).toHaveClass('is-set')
   expect(screen.getByText('default 20')).toBeInTheDocument()
   expect(screen.getByText('2 values')).toBeInTheDocument()
   expect(screen.getByText('release')).toBeInTheDocument()
-  fireEvent.change(width, { target: { value: '45' } })
+  enterValue(width, '45')
   expect(s().edits).toEqual({ width: 45 })
   expect(width.closest('.param')).toHaveClass('is-edited')
-  fireEvent.change(width, { target: { value: '40' } })
+  enterValue(width, '40')
   expect(s().edits).toEqual({})
   fireEvent.change(screen.getByRole('combobox', { name: 'Parameter set' }), { target: { value: '' } })
   expect(s().activeSet).toBeNull()
-  expect(screen.getByRole('spinbutton', { name: 'width' })).toHaveValue(20)
+  expect(screen.getByRole('spinbutton', { name: 'width' })).toHaveValue('20')
 })
 
 it('updates the selected set with the tweaked values', async () => {

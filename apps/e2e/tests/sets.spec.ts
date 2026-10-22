@@ -12,7 +12,7 @@ test('loads a set as the tweak and updates it from the viewer', async ({ page, v
   await expect(viewer.envelope).toContainText('40.00 x 10.00 x 5.00')
   await expect(page.getByText('default 20')).toBeVisible()
 
-  await viewer.param('depth').fill('12')
+  await viewer.setParam('depth', '12')
   await expect(viewer.showing).toContainText('TWEAK')
   await expect(viewer.envelope).toContainText('40.00 x 12.00 x 5.00')
   await page.getByRole('button', { name: 'Update set' }).click()
@@ -26,7 +26,7 @@ test('loads a set as the tweak and updates it from the viewer', async ({ page, v
 
 test('saves a tweak as a new set and deletes it again', async ({ page, viewer, project }) => {
   await viewer.open(project.id)
-  await viewer.param('height').fill('9')
+  await viewer.setParam('height', '9')
   await page.getByRole('button', { name: 'Save as set' }).click()
   const form = page.getByRole('form', { name: 'Save as set' })
   await form.getByPlaceholder('Screw tray').fill('Tall box')

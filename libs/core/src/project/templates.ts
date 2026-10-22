@@ -9,19 +9,19 @@ export const mainTemplate = (name: string, description: string) => `// ${name}
 // Units: millimetres. Z is up, the model sits on the XY plane.
 
 /* [Dimensions] */
-// Outer width along X
+// Outer width along X (mm)
 width = 40; // [5:1:200]
-// Outer depth along Y
+// Outer depth along Y (mm)
 depth = 30; // [5:1:200]
-// Outer height along Z
+// Outer height along Z (mm)
 height = 20; // [2:1:200]
-// Radius of the vertical edges
+// Radius of the vertical edges (mm)
 corner_radius = 3; // [0:0.5:20]
 
 /* [Quality] */
-// Maximum angle per facet on curves, in degrees
+// Maximum angle per facet on curves (deg)
 $fa = 4; // [1:1:12]
-// Maximum facet length on curves, in mm
+// Maximum facet length on curves (mm)
 $fs = 0.4; // [0.1:0.05:2]
 
 /* [Hidden] */

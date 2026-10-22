@@ -6,6 +6,7 @@ import type { AnnotationProposal, ParamProposal } from '@scad/protocol'
 import { CLI, CONFIG, WORKSPACE } from './env.ts'
 
 export const BOX = `/* [Size] */
+// Outer width (mm)
 width = 20; // [10:50]
 depth = 10;
 height = 5;
@@ -86,6 +87,11 @@ export const viewerPage = (page: Page) => {
     picker: page.getByRole('combobox', { name: 'Project' }),
     tool: (label: string) => page.locator('.toolbar').getByRole('button', { name: new RegExp(`${label}$`) }),
     param: (name: string) => page.getByRole('spinbutton', { name, exact: true }),
+    setParam: async (name: string, value: string) => {
+      const field = page.getByRole('spinbutton', { name, exact: true })
+      await field.fill(value)
+      await field.press('Enter')
+    },
     open: async (id: string) => {
       await page.goto(`/?project=${id}`)
       await expect(status).toHaveText(/^rendered/)

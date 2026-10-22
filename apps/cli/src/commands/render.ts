@@ -52,12 +52,13 @@ export const params = async ({ paths, args }: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
   requireProject(paths, project)
   const result = readRender(paths, project) ?? (await renderViaServerOrLocal(paths, project)).result
-  const rows = [['GROUP', 'NAME', 'VALUE', 'RANGE / OPTIONS', 'CAPTION']]
+  const rows = [['GROUP', 'NAME', 'VALUE', 'UNIT', 'RANGE / OPTIONS', 'CAPTION']]
   for (const p of result.params)
     rows.push([
       p.group ?? '',
       p.name,
       JSON.stringify(p.initial),
+      p.unit ?? '',
       p.options
         ? p.options.map((o) => JSON.stringify(o.value)).join('|')
         : p.min !== undefined || p.max !== undefined

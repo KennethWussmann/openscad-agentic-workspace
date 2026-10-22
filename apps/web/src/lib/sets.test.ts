@@ -24,4 +24,7 @@ it('derives set names from labels and formats values', () => {
   expect(slugify('  Screw Tray (M3)! ')).toBe('screw-tray-m3')
   expect(fmtValue('lid')).toBe('"lid"')
   expect(fmtValue([1, 2])).toBe('[1,2]')
+  expect(fmtValue([1, 2], 'mm')).toBe('[1,2] mm')
+  expect(fmtValue(1054.4, 'mm', 'de-DE')).toBe('1.054,4 mm')
+  expect(fmtValue(true)).toBe('true')
 })

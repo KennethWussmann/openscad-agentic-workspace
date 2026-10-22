@@ -1,30 +1,34 @@
-import type { DefineValue, ParamDef } from '@scad/protocol'
+import { type DefineValue, type ParamDef, UNITS } from '@scad/protocol'
 import { useState } from 'react'
 import { cx } from '../../components/classes.ts'
+import { QuantityInput } from '../../components/QuantityInput.tsx'
 
 type InputProps = { label: string; value: DefineValue; onChange: (v: DefineValue) => void }
 
-const VectorInput = ({ label, value, onChange }: InputProps) => {
+const VectorInput = ({ def, label, value, onChange }: InputProps & { def: ParamDef }) => {
   const [text, setText] = useState(JSON.stringify(value))
   const [bad, setBad] = useState(false)
   return (
-    <input
-      type="text"
-      aria-label={label}
-      aria-invalid={bad}
-      className={cx('mono', bad && 'is-bad')}
-      value={text}
-      onChange={(e) => {
-        setText(e.target.value)
-        try {
-          const parsed = JSON.parse(e.target.value) as DefineValue
-          setBad(!Array.isArray(parsed))
-          if (Array.isArray(parsed)) onChange(parsed)
-        } catch {
-          setBad(true)
-        }
-      }}
-    />
+    <div className={cx('quantity-field', bad && 'is-bad')}>
+      <input
+        type="text"
+        aria-label={label}
+        aria-invalid={bad}
+        className="mono"
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          try {
+            const parsed = JSON.parse(e.target.value) as DefineValue
+            setBad(!Array.isArray(parsed))
+            if (Array.isArray(parsed)) onChange(parsed)
+          } catch {
+            setBad(true)
+          }
+        }}
+      />
+      {def.unit && <span className="quantity-unit mono">{UNITS[def.unit].label}</span>}
+    </div>
   )
 }
 
@@ -44,18 +48,18 @@ const NumberInput = ({ def, label, value, onChange }: InputProps & { def: ParamD
           onChange={(e) => onChange(Number(e.target.value))}
         />
       )}
-      <input
-        type="number"
-        aria-label={label}
-        className="mono"
-        step={def.step ?? 'any'}
+      <QuantityInput
+        label={label}
         value={n}
-        onChange={(e) => e.target.value !== '' && onChange(Number(e.target.value))}
+        unit={def.unit}
+        min={def.min}
+        max={def.max}
+        step={def.step}
+        onCommit={onChange}
       />
     </div>
   )
 }
-
 export const ParamInput = ({ def, label, value, onChange }: InputProps & { def: ParamDef }) => {
   if (def.options)
     return (
@@ -85,6 +89,6 @@ export const ParamInput = ({ def, label, value, onChange }: InputProps & { def: 
       </button>
     )
   if (def.type === 'number') return <NumberInput def={def} label={label} value={value} onChange={onChange} />
-  if (def.type === 'vector') return <VectorInput label={label} value={value} onChange={onChange} />
+  if (def.type === 'vector') return <VectorInput def={def} label={label} value={value} onChange={onChange} />
   return <input type="text" aria-label={label} value={String(value)} onChange={(e) => onChange(e.target.value)} />
 }

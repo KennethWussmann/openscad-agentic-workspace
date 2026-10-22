@@ -79,7 +79,7 @@ flowchart LR
   - A wall-thickness overlay (T) shows walls under the nozzle (resin: minimum feature) in red and under the minimum wall in amber. Wall thickness is measured in a Web Worker.
 - **Measuring:** click two points to get distance and dx/dy/dz. Points snap to vertices.
 - **Parts panel:** shows each part on its own or the whole assembly.
-- **Parameter panel:** lists the OpenSCAD customizer parameters. Changing a value renders a temporary preview. "Send to agent" turns your values into a proposal the agent applies to the source.
+- **Parameter panel:** lists the OpenSCAD customizer parameters with their unit. Number fields take other units and arithmetic (`1 m`, `2,5 cm`, `1000 - 3 cm`, `100 cm * 2`) and convert them on Enter. Changing a value renders a temporary preview. "Send to agent" turns your values into a proposal the agent applies to the source.
 - **3D notes:** the Note tool (N) pins a numbered note wherever you click: on a face, an edge or a corner. You can add several, edit or delete them in place or in the Notes panel, and send them together. The agent gets each note's coordinates, normal and part, and what was clicked. That covers snapped edge end points and angle, flat face extent, or a fitted cylinder axis and diameter for holes and bosses. It also gets a snapshot of your view with the numbered pins. Sending again replaces notes the agent has not handled yet. Sent notes stay visible as dashed pins until the agent clears them.
 
   ![A note pinned to an edge of the model, with the inline editor open and the note listed in the Notes panel](docs/assets/viewer-notes.jpg)
