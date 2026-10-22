@@ -80,6 +80,7 @@ code {
 .app {
   display: grid;
   grid-template-rows: 46px 2px 1fr;
+  grid-template-columns: minmax(0, 1fr);
   height: 100%;
 }
 
@@ -87,6 +88,7 @@ code {
   display: flex;
   align-items: center;
   gap: 18px;
+  min-width: 0;
   padding: 0 14px 0 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--rule);
@@ -94,6 +96,7 @@ code {
 
 .brand {
   display: flex;
+  flex-shrink: 0;
   align-items: baseline;
   gap: 8px;
   padding: 0;
@@ -156,6 +159,8 @@ code {
   background-size: 5px 5px;
   background-repeat: no-repeat;
   max-width: 340px;
+  min-width: 0;
+  text-overflow: ellipsis;
 }
 
 .project-pick select option {
@@ -173,6 +178,8 @@ code {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .status {
@@ -271,13 +278,13 @@ code {
 
 .workbench {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   min-height: 0;
   transition: grid-template-columns 0.26s cubic-bezier(0.3, 0.7, 0.2, 1);
 }
 
 .workbench:has(.sidebar.is-collapsed) {
-  grid-template-columns: 38px 1fr;
+  grid-template-columns: 38px minmax(0, 1fr);
 }
 
 .workbench:has(.empty),
@@ -1151,7 +1158,7 @@ input[type="range"]::-moz-range-thumb {
   bottom: 0;
   height: 64px;
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 96px minmax(0, 1fr);
   background: var(--bg);
   border-top: 1px solid var(--rule);
   z-index: 3;
@@ -2705,4 +2712,218 @@ button.note-balloon:hover {
   font-size: 9.5px;
   color: var(--dim);
   white-space: nowrap;
+}
+
+@media (hover: none) {
+  .embed-exit,
+  .note .icon-btn {
+    opacity: 1;
+    transform: none;
+  }
+
+  .tick-ghost {
+    opacity: 0.7;
+  }
+}
+
+@media (max-width: 1100px) {
+  .brand-sub {
+    display: none;
+  }
+
+  .tool {
+    padding: 0 7px;
+  }
+
+  .tool-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .titleblock {
+    grid-template-columns: repeat(3, auto);
+  }
+
+  .tb-cell.is-minor {
+    display: none;
+  }
+
+  .tb-cell.wide {
+    grid-column: auto;
+  }
+
+  .console {
+    width: auto;
+    right: 14px;
+  }
+}
+
+@media (max-width: 900px) {
+  .project-desc {
+    display: none;
+  }
+}
+
+@media (max-width: 699px), (max-height: 500px) {
+  .topbar {
+    gap: 10px;
+    padding: 0 8px 0 12px;
+  }
+
+  .topbar:has(.project-pick) .brand-name,
+  .topbar-keys {
+    display: none;
+  }
+
+  .project-pick {
+    padding-left: 10px;
+  }
+
+  .project-pick select {
+    font-size: 14px;
+  }
+
+  .topbar-right {
+    gap: 2px;
+  }
+
+  .status {
+    padding: 6px;
+    margin-right: 4px;
+  }
+
+  .status > :not(.status-light) {
+    display: none;
+  }
+
+  .workbench {
+    position: relative;
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .app:not(.is-embed) .workbench > .stage {
+    grid-column: 2;
+  }
+
+  .sidebar {
+    position: absolute;
+    inset: 0 auto 0 0;
+    z-index: 8;
+    width: min(320px, calc(100% - 44px));
+    box-shadow: 14px 0 32px #000a;
+    transition:
+      width 0.26s cubic-bezier(0.3, 0.7, 0.2, 1),
+      box-shadow 0.26s;
+  }
+
+  .sidebar.is-collapsed {
+    width: 38px;
+    box-shadow: none;
+  }
+
+  .sidebar-body {
+    width: min(320px, calc(100vw - 44px));
+  }
+
+  .stage::before,
+  .stage::after {
+    display: none;
+  }
+
+  .toolbar {
+    top: 8px;
+    left: 8px;
+    max-height: calc(100% - 80px);
+    gap: 6px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .tool {
+    height: 28px;
+  }
+
+  .viewcube {
+    top: 4px;
+    right: 6px;
+    width: 84px;
+    height: 84px;
+  }
+
+  .timeline {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .timeline-label {
+    display: none;
+  }
+
+  .timeline-track {
+    padding: 0 4px;
+  }
+
+  .titleblock {
+    right: 8px;
+    bottom: 72px;
+  }
+
+  .tb-cell {
+    min-width: 0;
+    padding: 4px 8px 5px;
+  }
+
+  .tb-cell strong {
+    font-size: 12px;
+  }
+
+  .legend {
+    left: 56px;
+    bottom: 120px;
+    width: 190px;
+  }
+
+  .legend-key,
+  .legend-hint {
+    display: none;
+  }
+
+  .console {
+    left: 8px;
+    right: 8px;
+    bottom: 72px;
+    width: auto;
+    max-height: 60%;
+  }
+
+  .tool-hint {
+    bottom: 124px;
+    max-width: calc(100% - 16px);
+    text-align: center;
+  }
+
+  .diagnostics {
+    top: 8px;
+    left: 56px;
+    right: 100px;
+    max-width: none;
+    transform: none;
+    animation: rise 0.25s ease-out both;
+  }
+
+  .export-toast {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    width: auto;
+  }
+
+  .help-card {
+    width: min(380px, calc(100vw - 24px));
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+  }
 }

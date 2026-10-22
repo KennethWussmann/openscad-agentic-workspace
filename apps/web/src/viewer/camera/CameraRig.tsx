@@ -11,6 +11,7 @@ const UP: [number, number, number] = [0, 0, 1]
 export const CameraRig = () => {
   const ortho = useStore((s) => s.display.ortho)
   const size = useThree((s) => s.size)
+  rig.viewWidth = size.width
   rig.viewHeight = size.height
   const light = useRef<DirectionalLight>(null)
   const target = useMemo(() => new Vector3(), [])

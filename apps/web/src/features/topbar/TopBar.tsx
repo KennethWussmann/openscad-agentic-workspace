@@ -66,7 +66,7 @@ export const TopBar = ({ projects, project }: { projects: ProjectSummary[]; proj
             <Maximize2 size={15} />
           </IconButton>
         )}
-        <IconButton title="Keys (?)" onClick={toggleHelp}>
+        <IconButton title="Keys (?)" className="topbar-keys" onClick={toggleHelp}>
           <HelpCircle size={15} />
         </IconButton>
       </div>

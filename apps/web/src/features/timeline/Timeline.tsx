@@ -1,5 +1,6 @@
 import type { ProjectState } from '@scad/protocol'
 import { Ghost } from 'lucide-react'
+import { useLayoutEffect, useRef } from 'react'
 import { sameJson } from '../../lib/format.ts'
 import { useStore } from '../../store/store.ts'
 
@@ -13,15 +14,29 @@ export const Timeline = ({ project }: { project: ProjectState }) => {
   const ghostId = useStore((s) => s.ghostId)
   const setVersion = useStore((s) => s.setVersion)
   const setGhost = useStore((s) => s.setGhost)
+  const track = useRef<HTMLOListElement>(null)
   const latest = project.versions.at(-1)
   const workingMatches = latest && project.render && sameJson(project.render.inputs, latest.inputs)
+  const currentIndex = versionId ? project.versions.findIndex((v) => v.id === versionId) : project.versions.length
+  useLayoutEffect(() => {
+    const list = track.current
+    const current = list?.children[currentIndex]
+    if (!list || !(current instanceof HTMLElement)) return
+    const center = () => {
+      list.scrollLeft = current.offsetLeft - (list.clientWidth - current.offsetWidth) / 2
+    }
+    center()
+    const observer = new ResizeObserver(center)
+    for (const el of [list, ...list.children]) observer.observe(el)
+    return () => observer.disconnect()
+  }, [currentIndex])
   return (
     <div className="timeline">
       <div className="timeline-label">
         <span>Versions</span>
         <small className="mono">[ ]</small>
       </div>
-      <ol className="timeline-track">
+      <ol className="timeline-track" ref={track}>
         {project.versions.map((v) => (
           <li
             key={v.id}

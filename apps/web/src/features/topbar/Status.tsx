@@ -19,7 +19,7 @@ export const Status = ({ project }: { project: ProjectState | null }) => {
       ? 'not rendered'
       : `${render.status === 'ok' ? 'rendered' : 'failed'} ${render.durationMs} ms`
   return (
-    <div className={`status status-${state}`}>
+    <div className={`status status-${state}`} title={label}>
       <span className="status-light" />
       <span className="mono">{label}</span>
       {warnings > 0 && !busy && <Badge tone="amber">{warnings} warn</Badge>}
