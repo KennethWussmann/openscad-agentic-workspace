@@ -1,10 +1,13 @@
 import type { ProjectState } from '@scad/protocol'
 import type { ReactNode } from 'react'
+import { cx } from '../../components/classes.ts'
 import { fmtVec } from '../../lib/format.ts'
 import { useStore } from '../../store/store.ts'
 
-const Cell = ({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) => (
-  <div className={wide ? 'tb-cell wide' : 'tb-cell'}>
+type CellProps = { label: string; wide?: boolean; minor?: boolean; children: ReactNode }
+
+const Cell = ({ label, wide, minor, children }: CellProps) => (
+  <div className={cx('tb-cell', wide && 'wide', minor && 'is-minor')}>
     <span className="tb-label">{label}</span>
     {children}
   </div>
@@ -24,7 +27,7 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
     versionId ?? (tweaked ? 'TWEAK' : onSet ? `SET ${activeSet}` : project.versions.length ? 'WIP' : 'DRAFT')
   return (
     <div className="titleblock">
-      <Cell label="Project" wide>
+      <Cell label="Project" wide minor>
         <strong>{project.name}</strong>
       </Cell>
       <Cell label="Showing">
@@ -36,13 +39,13 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
       <Cell label="Envelope" wide>
         <span className="mono">{size ? fmtVec(size) : '-'}</span>
       </Cell>
-      <Cell label="Part">
+      <Cell label="Part" minor>
         <span className="mono">{solo ?? (project.parts.length > 1 ? 'ASSY' : project.parts[0]?.id)}</span>
       </Cell>
-      <Cell label="Units">
+      <Cell label="Units" minor>
         <span className="mono">mm</span>
       </Cell>
-      <Cell label="Scale">
+      <Cell label="Scale" minor>
         <span className="mono">1:1</span>
       </Cell>
     </div>

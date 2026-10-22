@@ -14,3 +14,11 @@ beforeEach(() => {
 })
 
 afterEach(() => cleanup())
+
+class StillResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+globalThis.ResizeObserver ??= StillResizeObserver

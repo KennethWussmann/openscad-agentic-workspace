@@ -2,7 +2,7 @@ import type { DefineValue, ProjectState, ProjectSummary, Vec3 } from '@scad/prot
 import { create } from 'zustand'
 import { sameJson } from '../lib/format.ts'
 import { overridesOf, setValues, withoutDefaults } from '../lib/sets.ts'
-import { DISPLAY_KEY, loadDisplay, SIDEBAR_KEY, setParam, urlParams } from './persist.ts'
+import { DISPLAY_KEY, loadDisplay, loadSidebar, SIDEBAR_KEY, setParam, urlParams } from './persist.ts'
 import type { AnalysisSummary, Display, ExportNotice, Measurement, NoteDraft, SectionState, Tool } from './types.ts'
 
 export * from './types.ts'
@@ -99,7 +99,7 @@ export const useStore = create<Store>((set, get) => ({
   bounds: null,
   help: false,
   console: false,
-  sidebar: localStorage.getItem(SIDEBAR_KEY) !== 'closed',
+  sidebar: loadSidebar(),
   embed: urlParams.has('embed') && urlParams.get('embed') !== '0',
   analysis: null,
   setProjects: (projects) => set({ projects }),

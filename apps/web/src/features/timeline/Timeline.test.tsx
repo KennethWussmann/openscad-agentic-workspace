@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { useStore } from '../../store/store.ts'
 import { project, renderResult, version } from '../../test/fixtures.ts'
@@ -40,4 +40,22 @@ it('selects versions and overlays others as ghost', () => {
   expect(useStore.getState().ghostId).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: /Working copy/ }))
   expect(useStore.getState().versionId).toBeNull()
+})
+
+const fake = (el: Element, props: Record<string, number>) => {
+  for (const [key, value] of Object.entries(props)) Object.defineProperty(el, key, { configurable: true, value })
+}
+
+it('scrolls the current version into the middle of the track', () => {
+  const many = Array.from({ length: 10 }, (_, i) =>
+    version({ id: `v${i + 1}`, index: i + 1, message: `Step ${i + 1}` }),
+  )
+  const { container } = render(<Timeline project={project({ versions: many })} />)
+  const track = container.querySelector('.timeline-track') as HTMLElement
+  fake(track, { clientWidth: 300 })
+  for (const [i, tick] of [...track.children].entries()) fake(tick, { offsetLeft: i * 100, offsetWidth: 100 })
+  act(() => useStore.getState().setVersion('v3'))
+  expect(track.scrollLeft).toBe(100)
+  act(() => useStore.getState().setVersion(null))
+  expect(track.scrollLeft).toBe(900)
 })

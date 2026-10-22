@@ -11,6 +11,7 @@ export const rig = {
   box: new Box3(),
   pose: null as Pose | null,
   orientation: new Quaternion(),
+  viewWidth: 800,
   viewHeight: 800,
 }
 
@@ -50,7 +51,13 @@ export const applyPose = (c: CameraControls) => {
 
 const boxRadius = () => (rig.box.isEmpty() ? 50 : rig.box.getBoundingSphere(new Sphere()).radius)
 
-const fitDistance = () => (boxRadius() / Math.sin(MathUtils.degToRad(FOV / 2))) * 1.15
+export const fitDistanceFor = (radius: number, aspect: number) => {
+  const vertical = MathUtils.degToRad(FOV / 2)
+  const horizontal = Math.atan(Math.tan(vertical) * aspect)
+  return (radius / Math.sin(Math.min(vertical, horizontal))) * 1.15
+}
+
+const fitDistance = () => fitDistanceFor(boxRadius(), rig.viewWidth / rig.viewHeight)
 
 export const viewDirection = (dir: Vector3, animate = true) => {
   const c = rig.controls
