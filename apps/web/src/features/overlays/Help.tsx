@@ -11,7 +11,7 @@ export const Help = () => {
     <div className="help">
       <div className="help-card">
         <header className="help-head">
-          <h3>Keys</h3>
+          <h3>Keyboard shortcuts</h3>
           <IconButton onClick={toggle} title="Close (Esc)">
             <X size={14} />
           </IconButton>

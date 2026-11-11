@@ -46,6 +46,6 @@ it('hides parts and solos one of them', () => {
   fireEvent.click(screen.getByRole('button', { name: /Base/ }))
   expect(useStore.getState().solo).toBe('base')
   expect(row('Base')).toHaveClass('is-solo')
-  fireEvent.click(screen.getByRole('button', { name: 'show all' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Show all' }))
   expect(useStore.getState().solo).toBeNull()
 })

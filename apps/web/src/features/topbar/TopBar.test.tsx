@@ -23,7 +23,7 @@ describe('TopBar', () => {
 
   it('shows only the logo on the start page', () => {
     render(<TopBar projects={projects} project={null} />)
-    expect(screen.getByText('scad')).toBeInTheDocument()
+    expect(screen.getByText('SCAD')).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     expect(screen.getAllByRole('button')).toHaveLength(1)
     expect(screen.queryByText('not rendered')).not.toBeInTheDocument()
@@ -32,7 +32,7 @@ describe('TopBar', () => {
   it('returns to the start page from the logo', () => {
     useStore.setState({ projectId: 'box' })
     render(<TopBar projects={projects} project={project()} />)
-    fireEvent.click(screen.getByRole('button', { name: /scad/ }))
+    fireEvent.click(screen.getByRole('button', { name: /SCAD/ }))
     expect(s().projectId).toBeNull()
   })
 

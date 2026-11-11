@@ -1,6 +1,6 @@
 import type { CheckStatus } from '@scad/protocol'
 
-export const CHECK_LABEL: Record<CheckStatus, string> = { pass: 'PASS', warn: 'WARN', fail: 'FAIL' }
+const CHECK_LABEL: Record<CheckStatus, string> = { pass: 'Pass', warn: 'Warn', fail: 'Fail' }
 
 export const CheckTag = ({ status }: { status: CheckStatus }) => (
   <span className={`check-tag is-${status}`}>{CHECK_LABEL[status]}</span>

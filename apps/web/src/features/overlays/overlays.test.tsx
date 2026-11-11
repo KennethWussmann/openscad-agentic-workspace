@@ -44,7 +44,7 @@ describe('Console', () => {
   it('says when there is no output', () => {
     useStore.setState({ console: true })
     render(<Console project={project()} />)
-    expect(screen.getByText('No output.')).toBeInTheDocument()
+    expect(screen.getByText('No output')).toBeInTheDocument()
   })
 })
 
@@ -74,7 +74,7 @@ describe('Help', () => {
     render(<Help />)
     for (const [key] of SHORTCUTS) expect(screen.getByText(key)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Close (Esc)' }))
-    expect(screen.queryByText('Keys')).not.toBeInTheDocument()
+    expect(screen.queryByText('Keyboard shortcuts')).not.toBeInTheDocument()
   })
 })
 
@@ -128,11 +128,11 @@ describe('ToolHint', () => {
     render(<ToolHint />)
     expect(screen.queryByText(/pick/)).not.toBeInTheDocument()
     act(() => useStore.getState().setTool('measure'))
-    expect(screen.getByText('pick the first point, vertices snap')).toBeInTheDocument()
+    expect(screen.getByText('Pick the first point, vertices snap')).toBeInTheDocument()
     act(() => useStore.getState().addPoint([0, 0, 0]))
-    expect(screen.getByText('pick the second point')).toBeInTheDocument()
+    expect(screen.getByText('Pick the second point')).toBeInTheDocument()
     act(() => useStore.getState().setTool('annotate'))
-    expect(screen.getByText('click a face, edge or corner to pin a note')).toBeInTheDocument()
+    expect(screen.getByText('Click a face, edge or corner to pin a note')).toBeInTheDocument()
     act(() => useStore.setState({ embed: true }))
     expect(screen.queryByText(/pin a note/)).not.toBeInTheDocument()
   })

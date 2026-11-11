@@ -68,7 +68,7 @@ describe('SectionPanel', () => {
   it('offers move and rotate for a free plane', () => {
     useStore.setState({ section: { ...s().section, enabled: true } })
     render(<Toolbar process="fdm" />)
-    fireEvent.click(screen.getByRole('button', { name: 'FREE' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Free' }))
     expect(screen.queryByRole('slider')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Rotate' }))
     expect(s().section.gizmo).toBe('rotate')

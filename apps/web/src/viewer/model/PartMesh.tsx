@@ -32,7 +32,7 @@ export const PartMesh = ({ mesh, color, display, clip, ghost, heat, data, onClic
   const material = useMemo(() => {
     if (ghost)
       return new MeshBasicMaterial({
-        color: '#5ad1e6',
+        color: '#63c2d4',
         transparent: true,
         opacity: 0.12,
         depthWrite: false,
@@ -60,9 +60,9 @@ export const PartMesh = ({ mesh, color, display, clip, ghost, heat, data, onClic
   material.clippingPlanes = clip
 
   const lines = useMemo(() => {
-    if (ghost) return new LineBasicMaterial({ color: '#5ad1e6', transparent: true, opacity: 0.55, depthTest: false })
+    if (ghost) return new LineBasicMaterial({ color: '#63c2d4', transparent: true, opacity: 0.55, depthTest: false })
     if (display.xray)
-      return new LineBasicMaterial({ color: '#5ad1e6', transparent: true, opacity: 0.7, depthTest: false })
+      return new LineBasicMaterial({ color: '#63c2d4', transparent: true, opacity: 0.7, depthTest: false })
     return new LineBasicMaterial({ color: '#0b1016', transparent: true, opacity: 0.55 })
   }, [ghost, display.xray])
   useEffect(() => () => lines.dispose(), [lines])

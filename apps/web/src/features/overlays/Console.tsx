@@ -20,10 +20,10 @@ export const Console = ({ project }: { project: ProjectState }) => {
         </IconButton>
       </header>
       <ol className="mono">
-        {lines.length === 0 && <li className="echo">No output.</li>}
+        {lines.length === 0 && <li className="echo">No output</li>}
         {lines.map((d) => (
           <li key={d.id} className={d.level}>
-            <span className="lvl">{d.level.toUpperCase()}</span>
+            <span className="lvl">{d.level}</span>
             <span className="part">{d.part}</span>
             {location(d) && <span className="loc">{location(d)}</span>}
             <span>{d.message}</span>

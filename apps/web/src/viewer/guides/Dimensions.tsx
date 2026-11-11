@@ -48,7 +48,7 @@ export const Dimensions = ({ box, bed }: { box: Box3; bed: Vec3 }) => {
       <Line
         points={segments}
         segments
-        color="#5ad1e6"
+        color="#63c2d4"
         lineWidth={1}
         dashed
         dashSize={2}
@@ -56,9 +56,9 @@ export const Dimensions = ({ box, bed }: { box: Box3; bed: Vec3 }) => {
         transparent
         opacity={0.35}
       />
-      <Line points={[x0, x1]} color="#5ad1e6" lineWidth={1.2} />
-      <Line points={[y0, y1]} color="#5ad1e6" lineWidth={1.2} />
-      <Line points={[z0, z1]} color="#5ad1e6" lineWidth={1.2} />
+      <Line points={[x0, x1]} color="#63c2d4" lineWidth={1.2} />
+      <Line points={[y0, y1]} color="#63c2d4" lineWidth={1.2} />
+      <Line points={[z0, z1]} color="#63c2d4" lineWidth={1.2} />
       <Html position={mid(x0, x1)} center className={`dim-tag${over(0)}`}>
         <span>X</span> {fmt(size.x)}
       </Html>

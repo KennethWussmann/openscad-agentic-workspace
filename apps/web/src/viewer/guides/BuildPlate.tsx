@@ -32,15 +32,15 @@ export const BuildPlate = ({ bed, printer, box, extent }: BuildPlateProps) => {
       .slice(0, 4)
       .flatMap(([x, y]) => [[x, y, 0] as [number, number, number], [x, y, bz] as [number, number, number]]),
   ]
-  const outline = fits ? '#3b556c' : '#ff3b30'
+  const outline = fits ? '#4a4c53' : '#ff3b30'
   const axis = Math.max(10, extent * 0.8)
   return (
     <group renderOrder={0}>
       <lineSegments geometry={minorGeo}>
-        <lineBasicMaterial color="#1a2633" transparent opacity={0.7} depthWrite={false} />
+        <lineBasicMaterial color="#1e1f23" transparent opacity={0.7} depthWrite={false} />
       </lineSegments>
       <lineSegments geometry={majorGeo}>
-        <lineBasicMaterial color="#26394b" transparent opacity={0.9} depthWrite={false} />
+        <lineBasicMaterial color="#2a2b30" transparent opacity={0.9} depthWrite={false} />
       </lineSegments>
       <Line points={corners(0)} color={outline} lineWidth={1.5} transparent opacity={0.9} />
       <Line

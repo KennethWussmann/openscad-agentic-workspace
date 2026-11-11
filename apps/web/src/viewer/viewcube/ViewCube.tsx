@@ -44,7 +44,7 @@ const labelTexture = (label: string) => {
   if (ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0)'
     ctx.fillRect(0, 0, 256, 256)
-    ctx.fillStyle = '#d7e1ea'
+    ctx.fillStyle = '#d4d5da'
     ctx.font = `600 ${label.length > 5 ? 38 : 44}px "Martian Mono Variable", monospace`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
@@ -89,7 +89,7 @@ const CubeScene = () => {
         >
           <boxGeometry args={r.size} />
           <meshStandardMaterial
-            color={hover === r.key ? '#5ad1e6' : r.dir.filter(Boolean).length === 1 ? '#1d2a37' : '#24384a'}
+            color={hover === r.key ? '#63c2d4' : r.dir.filter(Boolean).length === 1 ? '#222327' : '#2a2b30'}
             roughness={0.8}
           />
         </mesh>

@@ -5,8 +5,8 @@ import type { AnalysisSummary } from '../../store/store.ts'
 import type { LoadedModel } from '../model/loader.ts'
 
 export const HEAT = {
-  neutral: new Color('#7d8b97'),
-  bed: new Color('#2b6e7c'),
+  neutral: new Color('#8a8b91'),
+  bed: new Color('#2c5961'),
   amber: new Color('#f2a541'),
   red: new Color('#ff3b30'),
 }

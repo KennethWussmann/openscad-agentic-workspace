@@ -35,7 +35,7 @@ export const SectionPanel = ({ range }: { range: [number, number] | null }) => {
       <div className="section-row">
         {AXES.map((a) => (
           <Chip key={a} active={section.axis === a} onClick={() => setSection({ axis: a })}>
-            {a.toUpperCase()}
+            {a === 'free' ? 'Free' : a.toUpperCase()}
           </Chip>
         ))}
         <Chip icon active={section.flip} title="Flip kept side" onClick={() => setSection({ flip: !section.flip })}>

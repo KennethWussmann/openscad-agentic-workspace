@@ -11,14 +11,14 @@ const Placeholder = ({ status }: { status: ProjectSummary['status'] }) => (
   <div className={cx('card-empty', status === 'error' && 'is-error')}>
     <Box size={34} strokeWidth={1.2} />
     <span className="mono">
-      {status === 'error' ? 'render failed' : status === 'ok' ? 'drawing preview' : 'not rendered'}
+      {status === 'error' ? 'No preview' : status === 'ok' ? 'Drawing preview' : 'Not rendered'}
     </span>
   </div>
 )
 
 const Stat = ({ label, children, wide }: { label: string; children: string; wide?: boolean }) => (
   <div className={cx('card-stat', wide && 'is-wide')}>
-    <dt className="mono">{label}</dt>
+    <dt>{label}</dt>
     <dd className="mono">{children}</dd>
   </div>
 )
@@ -53,18 +53,18 @@ export const ProjectCard = ({ project, index, onOpen }: Props) => {
           <Placeholder status={project.status} />
         )}
         <span className="card-flags">
-          {project.status === 'error' && <span className="check-tag is-fail">RENDER FAILED</span>}
+          {project.status === 'error' && <span className="check-tag is-fail">Render failed</span>}
           {project.check && <CheckTag status={project.check} />}
-          {project.proposal && <Badge tone="amber">PROPOSAL</Badge>}
+          {project.proposal && <Badge tone="amber">Proposal</Badge>}
         </span>
         <span className="card-id mono">{project.id}</span>
         <span className="card-open mono">
-          open <ArrowUpRight size={12} />
+          Open <ArrowUpRight size={12} />
         </span>
       </span>
       <span className="card-body">
         <strong className="card-title">{project.name}</strong>
-        <span className="card-desc">{project.description || 'No description yet.'}</span>
+        <span className="card-desc">{project.description || 'No description yet'}</span>
         <dl className="card-stats">
           <Stat label="Size mm" wide>
             {project.size ? project.size.map((v) => Math.round(v * 10) / 10).join(' x ') : '-'}

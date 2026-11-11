@@ -19,9 +19,9 @@ test('toggles display options from the toolbar and the keyboard', async ({ page,
 test('opens the shortcut help and closes it with Escape', async ({ page, viewer, project }) => {
   await viewer.open(project.id)
   await page.keyboard.press('?')
-  await expect(page.getByRole('heading', { name: 'Keys' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Keyboard shortcuts' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByRole('heading', { name: 'Keys' })).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Keyboard shortcuts' })).toBeHidden()
 })
 
 test('collapses the side panel and remembers it', async ({ page, viewer, project }) => {
@@ -59,9 +59,9 @@ test('cuts a section along the model', async ({ page, viewer, project }) => {
 test('guides through measuring', async ({ page, viewer, project }) => {
   await viewer.open(project.id)
   await viewer.tool('Measure').click()
-  await expect(page.getByText('pick the first point, vertices snap')).toBeVisible()
+  await expect(page.getByText('Pick the first point, vertices snap')).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByText('pick the first point, vertices snap')).toBeHidden()
+  await expect(page.getByText('Pick the first point, vertices snap')).toBeHidden()
   await expect(viewer.tool('Measure')).toHaveAttribute('aria-pressed', 'false')
 })
 

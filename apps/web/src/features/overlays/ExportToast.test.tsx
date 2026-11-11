@@ -89,9 +89,9 @@ it('shows mesh check findings per part', () => {
   useStore.getState().showExportNotice({ result: result({ meshCheck }), error: null })
   const { container } = render(<ExportToast />)
   expect(container.firstChild).toHaveClass('is-warn')
-  expect(screen.getByText('WARN')).toHaveClass('check-tag')
+  expect(screen.getByText('Warn')).toHaveClass('check-tag')
   expect(screen.getByText('Lid')).toBeInTheDocument()
-  expect(screen.getByText('walls WARN')).toBeInTheDocument()
+  expect(screen.getByText('walls warn')).toBeInTheDocument()
   expect(screen.queryByText('base')).not.toBeInTheDocument()
 })
 
