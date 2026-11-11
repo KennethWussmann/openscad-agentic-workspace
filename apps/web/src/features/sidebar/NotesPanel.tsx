@@ -26,7 +26,7 @@ const NoteList = () => {
           <button type="button" className="note-main" onClick={() => editNote(n.id)}>
             <span className="note-num mono">{noteNumber(i + 1)}</span>
             <span className="note-body">
-              <span className={cx('note-text', !n.text.trim() && 'is-empty')}>{n.text.trim() || 'empty note'}</span>
+              <span className={cx('note-text', !n.text.trim() && 'is-empty')}>{n.text.trim() || 'Empty note'}</span>
               <small className="mono">
                 {summarize(n)} / {n.part.id} @ {n.point.map((v) => fmt(v)).join(', ')}
               </small>
@@ -91,9 +91,7 @@ export const NotesPanel = ({ project }: { project: ProjectState }) => {
           onClick={() => setTool(annotating ? 'orbit' : 'annotate')}
         >
           <MapPinPlus size={15} />
-          <span>
-            {annotating ? 'Click a face, edge or corner on the model' : 'Pin notes to the model for the agent'}
-          </span>
+          <span>{annotating ? 'Click a face, edge or corner on the model' : 'Pin a note for the agent'}</span>
           <kbd className="mono">N</kbd>
         </button>
       )}

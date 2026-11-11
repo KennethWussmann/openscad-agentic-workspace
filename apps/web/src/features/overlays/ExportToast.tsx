@@ -1,7 +1,7 @@
 import type { CheckStatus, PartCheck } from '@scad/protocol'
 import { X } from 'lucide-react'
 import { useEffect } from 'react'
-import { CHECK_LABEL, CheckTag } from '../../components/CheckTag.tsx'
+import { CheckTag } from '../../components/CheckTag.tsx'
 import { IconButton } from '../../components/IconButton.tsx'
 import { baseName } from '../../lib/format.ts'
 import { useStore } from '../../store/store.ts'
@@ -78,7 +78,7 @@ export const ExportToast = () => {
                 <span>{p.label ?? p.id}</span>
                 {findings(p).map(([name, status]) => (
                   <em key={name} className={`is-${status}`}>
-                    {name} {CHECK_LABEL[status]}
+                    {name} {status}
                   </em>
                 ))}
               </li>

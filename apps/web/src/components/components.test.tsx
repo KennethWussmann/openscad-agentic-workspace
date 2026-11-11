@@ -82,5 +82,5 @@ it('passes composer text changes up', () => {
 
 it('labels check statuses', () => {
   render(<CheckTag status="fail" />)
-  expect(screen.getByText('FAIL')).toHaveClass('check-tag', 'is-fail')
+  expect(screen.getByText('Fail')).toHaveClass('check-tag', 'is-fail')
 })

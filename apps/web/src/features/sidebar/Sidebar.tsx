@@ -35,7 +35,7 @@ export const Sidebar = ({ project }: { project: ProjectState }) => {
     <aside className={cx('sidebar', !open && 'is-collapsed')}>
       <div className="sidebar-body" inert={!open}>
         <header className="sidebar-head">
-          <span className="mono">Inspector</span>
+          <span>Inspector</span>
           <IconButton title="Hide panel (B)" onClick={toggleSidebar}>
             <PanelLeftClose size={14} />
           </IconButton>

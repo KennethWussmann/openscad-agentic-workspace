@@ -49,7 +49,7 @@ beforeEach(() => {
 
 it('starts note mode from the call to action', () => {
   render(<NotesPanel project={project()} />)
-  fireEvent.click(screen.getByRole('button', { name: /Pin notes to the model/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Pin a note for the agent/ }))
   expect(s().tool).toBe('annotate')
   fireEvent.click(screen.getByRole('button', { name: /Click a face, edge or corner/ }))
   expect(s().tool).toBe('orbit')
@@ -73,7 +73,7 @@ it('requires text on every note before sending', () => {
   const send = screen.getByRole('button', { name: 'Send to agent' })
   expect(send).toBeDisabled()
   expect(send).toHaveAttribute('title', 'Every note needs text')
-  expect(screen.getByText('empty note')).toBeInTheDocument()
+  expect(screen.getByText('Empty note')).toBeInTheDocument()
 })
 
 it('sends notes with the overall note and clears the composer', async () => {

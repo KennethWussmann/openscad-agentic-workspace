@@ -16,7 +16,7 @@ export const NoteEditor = ({ note, index, extent }: { note: NoteDraft; index: nu
     <Html position={tipOf(note.point, note.normal, extent)} zIndexRange={EDITOR_Z} className="note-editor-anchor">
       <div className="note-editor" onPointerDown={(e) => e.stopPropagation()}>
         <header>
-          <span className="note-editor-id mono">NOTE {noteNumber(index + 1)}</span>
+          <span className="note-editor-id mono">Note {noteNumber(index + 1)}</span>
           <span className="note-editor-what mono">
             {summarize(note)} / {note.part.id}
           </span>
@@ -38,7 +38,7 @@ export const NoteEditor = ({ note, index, extent }: { note: NoteDraft; index: nu
           <button type="button" className="note-editor-delete" onClick={() => removeNote(note.id)}>
             <Trash size={11} /> Delete
           </button>
-          <span className="mono">shift+enter new line</span>
+          <span className="mono">Shift+Enter for a new line</span>
           <button type="button" className="note-editor-done" onClick={closeEditor} disabled={!note.text.trim()}>
             <CornerDownLeft size={11} /> Done
           </button>

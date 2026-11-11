@@ -5,7 +5,7 @@ import { expect, type Proposal, scadJson, test } from '../src/fixtures.ts'
 test('pins a note on the model and sends it with a snapshot', async ({ page, viewer, project }) => {
   await viewer.open(project.id)
   await page.keyboard.press('n')
-  await expect(page.getByText('click a face, edge or corner to pin a note')).toBeVisible()
+  await expect(page.getByText('Click a face, edge or corner to pin a note')).toBeVisible()
   await expect(viewer.envelope).toContainText('20.00 x 10.00 x 5.00')
   await viewer.canvas.click()
 

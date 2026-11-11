@@ -14,7 +14,7 @@ type BalloonProps = {
 
 export const Balloon = ({ point, normal, extent, label, variant, title, onSelect }: BalloonProps) => {
   const tip = tipOf(point, normal, extent)
-  const color = variant === 'sent' ? '#5ad1e6' : '#f2a541'
+  const color = variant === 'sent' ? '#63c2d4' : '#f2a541'
   return (
     <group>
       <Line

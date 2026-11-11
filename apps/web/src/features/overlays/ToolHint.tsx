@@ -7,10 +7,10 @@ export const ToolHint = () => {
   const hint =
     tool === 'measure'
       ? pending
-        ? 'pick the second point'
-        : 'pick the first point, vertices snap'
+        ? 'Pick the second point'
+        : 'Pick the first point, vertices snap'
       : tool === 'annotate' && !embed
-        ? 'click a face, edge or corner to pin a note'
+        ? 'Click a face, edge or corner to pin a note'
         : null
   return hint && <div className="tool-hint mono">{hint}</div>
 }

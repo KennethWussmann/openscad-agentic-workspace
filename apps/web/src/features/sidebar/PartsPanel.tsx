@@ -48,7 +48,7 @@ export const PartsPanel = ({ project }: { project: ProjectState }) => {
       extra={
         solo && (
           <button type="button" className="link" onClick={() => setSolo(null)}>
-            show all
+            Show all
           </button>
         )
       }

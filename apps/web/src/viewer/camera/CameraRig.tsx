@@ -45,7 +45,7 @@ export const CameraRig = () => {
         infinityDolly={false}
         minDistance={0.5}
       />
-      <hemisphereLight args={['#dfe8f2', '#1a2129', 1.1]} />
+      <hemisphereLight args={['#dfe8f2', '#1b1c1f', 1.1]} />
       <ambientLight intensity={0.25} />
       <directionalLight ref={light} intensity={1.6} />
       <directionalLight position={[-200, 300, 500]} intensity={0.35} />

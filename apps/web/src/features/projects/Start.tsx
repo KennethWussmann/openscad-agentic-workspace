@@ -16,11 +16,7 @@ const Hero = ({ count }: { count: number }) => {
   const sums = totals(projects)
   return (
     <header className="start-hero">
-      <p className="start-eyebrow mono">scad workspace / live</p>
-      <h1>
-        {count === 0 ? 'Nothing on the table' : 'On the bench'}
-        <span className="cursor">_</span>
-      </h1>
+      <h1>{count === 0 ? 'Nothing on the table' : 'On the bench'}</h1>
       <p className="start-lede">
         Ask your agent to model something, or start a project with <code>pnpm scad new my-part</code>. Every card
         follows along live while the agent works.
@@ -28,15 +24,15 @@ const Hero = ({ count }: { count: number }) => {
       {count > 0 && (
         <dl className="start-totals">
           <div>
-            <dt className="mono">projects</dt>
+            <dt>Projects</dt>
             <dd>{sums.projects}</dd>
           </div>
           <div>
-            <dt className="mono">parts</dt>
+            <dt>Parts</dt>
             <dd>{sums.parts}</dd>
           </div>
           <div>
-            <dt className="mono">checkpoints</dt>
+            <dt>Checkpoints</dt>
             <dd>{sums.versions}</dd>
           </div>
         </dl>
@@ -78,7 +74,7 @@ export const Start = () => {
                   <button
                     key={s.id}
                     type="button"
-                    className={cx('mono', sort === s.id && 'is-active')}
+                    className={cx(sort === s.id && 'is-active')}
                     aria-pressed={sort === s.id}
                     onClick={() => setSort(s.id)}
                   >
@@ -94,7 +90,7 @@ export const Start = () => {
                 ))}
               </div>
             ) : (
-              <p className="start-none mono">No project matches "{query}".</p>
+              <p className="start-none mono">No project matches "{query}"</p>
             )}
           </>
         )}

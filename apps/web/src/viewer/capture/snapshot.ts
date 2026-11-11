@@ -5,7 +5,7 @@ import { noteNumber, tipOf } from '../notes/placement.ts'
 import { stage } from './CaptureBridge.tsx'
 
 const MAX_WIDTH = 2048
-const COLORS = { bg: '#0a0f14', amber: '#f2a541', ink: '#1b1206', text: '#d8e2ea', dim: '#6b7d8d', rule: '#2a3b4b' }
+const COLORS = { bg: '#0e0f11', amber: '#f2a541', ink: '#1b1206', text: '#ececee', dim: '#85868d', rule: '#3a3b40' }
 const FONT = '"Martian Mono Variable", ui-monospace, monospace'
 
 const wrap = (ctx: CanvasRenderingContext2D, text: string, width: number) => {

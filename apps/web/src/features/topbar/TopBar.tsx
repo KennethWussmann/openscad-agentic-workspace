@@ -10,9 +10,9 @@ const Brand = () => (
   <button type="button" className="brand" title="Start page" onClick={() => useStore.getState().selectProject(null)}>
     <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true">
       <path d="M16 3 28 10v12L16 29 4 22V10z" fill="none" stroke="currentColor" strokeWidth="2.2" />
-      <path d="M16 16 28 10M16 16v13M16 16 4 10" stroke="var(--amber)" strokeWidth="1.8" />
+      <path d="M16 16 28 10M16 16v13M16 16 4 10" stroke="currentColor" strokeWidth="1.8" />
     </svg>
-    <span className="brand-name">scad</span>
+    <span className="brand-name">SCAD</span>
     <span className="brand-sub">workspace</span>
   </button>
 )

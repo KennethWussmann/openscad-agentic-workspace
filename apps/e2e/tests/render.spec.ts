@@ -72,7 +72,7 @@ test('shows every part of an assembly and solos one', async ({ viewer, project }
 
   await viewer.sidebar.getByRole('button', { name: /Lid/ }).click()
   await expect(viewer.envelope).toContainText('30.00 x 20.00 x 2.00')
-  await viewer.sidebar.getByRole('button', { name: 'show all' }).click()
+  await viewer.sidebar.getByRole('button', { name: 'Show all' }).click()
   await viewer.sidebar.getByRole('button', { name: 'Toggle visibility' }).first().click()
   await expect(viewer.envelope).toContainText('30.00 x 20.00 x 2.00')
 })
