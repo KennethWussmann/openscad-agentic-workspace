@@ -499,12 +499,16 @@ code {
 
 .part {
   display: grid;
-  grid-template-columns: 32px 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 4px;
   min-height: 40px;
   border-radius: var(--r);
   transition: background-color var(--fast) var(--ease);
+}
+
+.part.has-icons {
+  grid-template-columns: 32px 1fr 32px;
 }
 
 .part:hover {
@@ -515,8 +519,99 @@ code {
   opacity: 0.45;
 }
 
-.part.is-solo .part-name span {
+.part.is-selected .part-name span {
   color: var(--accent);
+}
+
+.part.is-peek .part-name span {
+  color: #f2a541;
+}
+
+.view-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  margin: 0 0 10px;
+  padding: 2px;
+  background: var(--panel-2);
+  border-radius: var(--r-sm);
+}
+
+.view-tab {
+  height: 26px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  color: var(--dim);
+  transition:
+    color var(--fast) var(--ease),
+    background-color var(--fast) var(--ease);
+}
+
+.view-tab:hover {
+  color: var(--ink);
+}
+
+.view-tab.is-active {
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.assembly-details {
+  margin-top: 12px;
+}
+
+.assembly-legend {
+  display: block;
+  margin: 0 0 6px;
+  color: var(--dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.assembly-explode {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 4px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.assembly-explode em {
+  color: var(--dim);
+  font-style: normal;
+}
+
+.peek-card {
+  position: absolute;
+  top: 84px;
+  left: 16px;
+  z-index: 6;
+  display: grid;
+  gap: 4px;
+  min-width: 180px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--rule-2);
+  border-radius: var(--r);
+  box-shadow: var(--shadow);
+}
+
+.peek-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.peek-card .link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 0;
 }
 
 .part-name {

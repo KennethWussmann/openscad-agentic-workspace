@@ -17,6 +17,7 @@ export type Flags = {
   description?: string
   from?: string
   part?: string
+  assembly?: string
   sheet?: boolean
   view?: string
   section?: string

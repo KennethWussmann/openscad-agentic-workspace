@@ -1,4 +1,11 @@
-import type { AnnotationSource, DefineValue, ModelSourceKind, ProjectState, RenderResult } from '@scad/protocol'
+import type {
+  AnnotationSource,
+  AssemblyResult,
+  DefineValue,
+  ModelSourceKind,
+  ProjectState,
+  RenderResult,
+} from '@scad/protocol'
 
 export type ModelSource = {
   kind: ModelSourceKind
@@ -18,6 +25,61 @@ export const modelSource = (project: ProjectState, versionId: string | null, twe
   })
   if (tweaking && project.tweak?.parts.some((p) => p.model)) return pick('tweak', project.tweak)
   return project.render ? pick('working', project.render) : null
+}
+
+export const assemblyResult = (
+  project: ProjectState,
+  versionId: string | null,
+  tweaking: boolean,
+  assemblyId: string | null,
+): AssemblyResult | null => {
+  if (!assemblyId) return null
+  if (versionId) {
+    const v = project.versions.find((x) => x.id === versionId)
+    const a = v?.assemblies.find((x) => x.id === assemblyId)
+    return a
+      ? {
+          id: a.id,
+          label: a.label,
+          file: '',
+          status: 'ok',
+          preview: false,
+          export: false,
+          stale: false,
+          parts: a.parts.map((p) => ({
+            ...p,
+            stale: false,
+            diagnostics: [],
+            facets: null,
+            vertices: null,
+            durationMs: 0,
+          })),
+          bbox: null,
+          durationMs: 0,
+          diagnostics: [],
+        }
+      : null
+  }
+  const tweak = tweaking && project.tweak?.assemblies.some((a) => a.parts.some((p) => p.model))
+  const from = tweak ? project.tweak : project.render
+  return from?.assemblies.find((a) => a.id === assemblyId) ?? null
+}
+
+export const assemblySource = (
+  project: ProjectState,
+  versionId: string | null,
+  tweaking: boolean,
+  assemblyId: string | null,
+): ModelSource | null => {
+  const result = assemblyResult(project, versionId, tweaking, assemblyId)
+  if (!result) return null
+  if (versionId) return { kind: 'version', stamp: versionId, parts: result.parts }
+  const tweak = tweaking && project.tweak?.assemblies.some((a) => a.parts.some((p) => p.model))
+  return {
+    kind: tweak ? 'tweak' : 'working',
+    stamp: (tweak ? project.tweak?.finishedAt : project.render?.finishedAt) ?? '',
+    parts: result.parts.map((p) => ({ id: p.id, model: p.model })),
+  }
 }
 
 export const annotationSource = (

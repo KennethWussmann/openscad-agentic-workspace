@@ -3,7 +3,16 @@ import { create } from 'zustand'
 import { sameJson } from '../lib/format.ts'
 import { overridesOf, setValues, withoutDefaults } from '../lib/sets.ts'
 import { DISPLAY_KEY, loadDisplay, loadSidebar, SIDEBAR_KEY, setParam, urlParams } from './persist.ts'
-import type { AnalysisSummary, Display, ExportNotice, Measurement, NoteDraft, SectionState, Tool } from './types.ts'
+import type {
+  AnalysisSummary,
+  Display,
+  ExportNotice,
+  Measurement,
+  NoteDraft,
+  SectionState,
+  Tool,
+  ViewMode,
+} from './types.ts'
 
 export * from './types.ts'
 
@@ -17,8 +26,12 @@ export type Store = {
   exportNotice: ExportNotice | null
   versionId: string | null
   ghostId: string | null
-  hidden: string[]
-  solo: string | null
+  viewMode: ViewMode
+  selectedPart: string | null
+  selectedAssembly: string | null
+  assemblyHidden: string[]
+  explode: number
+  peekPart: string | null
   display: Display
   section: SectionState
   tool: Tool
@@ -44,8 +57,14 @@ export type Store = {
   dismissExportNotice: () => void
   setVersion: (id: string | null) => void
   setGhost: (id: string | null) => void
-  togglePart: (id: string) => void
-  setSolo: (id: string | null) => void
+  setViewMode: (mode: ViewMode) => void
+  toggleViewMode: () => void
+  selectPart: (id: string) => void
+  selectAssembly: (id: string) => void
+  toggleAssemblyPart: (id: string) => void
+  setExplode: (value: number) => void
+  setPeekPart: (id: string | null) => void
+  openPart: (id: string) => void
   toggleDisplay: (key: keyof Display) => void
   setSection: (patch: Partial<SectionState>) => void
   setTool: (tool: Tool) => void
@@ -84,8 +103,12 @@ export const useStore = create<Store>((set, get) => ({
   exportNotice: null,
   versionId: null,
   ghostId: null,
-  hidden: [],
-  solo: null,
+  viewMode: 'print',
+  selectedPart: null,
+  selectedAssembly: null,
+  assemblyHidden: [],
+  explode: 0,
+  peekPart: null,
   display: loadDisplay(),
   section: { enabled: false, axis: 'x', offset: 0, flip: false, caps: true, gizmo: 'translate' },
   tool: 'orbit',
@@ -117,8 +140,12 @@ export const useStore = create<Store>((set, get) => ({
             exportNotice: null,
             versionId: null,
             ghostId: null,
-            hidden: [],
-            solo: null,
+            viewMode: project?.assemblies.some((a) => a.preview) ? 'assembly' : 'print',
+            selectedPart: project?.parts.find((p) => p.preview)?.id ?? null,
+            selectedAssembly: project?.assemblies.find((a) => a.preview)?.id ?? project?.assemblies[0]?.id ?? null,
+            assemblyHidden: [],
+            explode: 0,
+            peekPart: null,
             measures: [],
             pending: null,
             notes: [],
@@ -139,6 +166,16 @@ export const useStore = create<Store>((set, get) => ({
           activeSet: null,
           edits: withoutDefaults(overridesOf(setValues(prev, activeSet), edits), project.render?.params ?? []),
         })
+      const partIds = new Set(project.parts.map((p) => p.id))
+      const assemblyIds = new Set(project.assemblies.map((a) => a.id))
+      const { selectedPart, selectedAssembly, peekPart } = get()
+      const patch: Partial<Store> = {}
+      if (selectedPart && !partIds.has(selectedPart))
+        patch.selectedPart = project.parts.find((p) => p.preview)?.id ?? null
+      if (selectedAssembly && !assemblyIds.has(selectedAssembly))
+        patch.selectedAssembly = project.assemblies[0]?.id ?? null
+      if (peekPart) patch.peekPart = null
+      if (Object.keys(patch).length) set(patch)
     }
   },
   selectProject: (projectId) => {
@@ -151,9 +188,44 @@ export const useStore = create<Store>((set, get) => ({
   dismissExportNotice: () => set({ exportNotice: null }),
   setVersion: (versionId) => set((s) => ({ versionId, ghostId: s.ghostId === versionId ? null : s.ghostId })),
   setGhost: (ghostId) => set({ ghostId }),
-  togglePart: (id) =>
-    set((s) => ({ hidden: s.hidden.includes(id) ? s.hidden.filter((h) => h !== id) : [...s.hidden, id] })),
-  setSolo: (solo) => set({ solo }),
+  setViewMode: (viewMode) =>
+    set((s) => {
+      if (s.viewMode === viewMode) return s
+      get().requestFit()
+      return { viewMode, peekPart: null }
+    }),
+  toggleViewMode: () =>
+    set((s) => {
+      const assemblies = s.project?.assemblies ?? []
+      if (!assemblies.length) return s
+      get().requestFit()
+      return { viewMode: s.viewMode === 'print' ? 'assembly' : 'print', peekPart: null }
+    }),
+  selectPart: (id) =>
+    set((s) => {
+      if (s.selectedPart === id) return s
+      get().requestFit()
+      return { selectedPart: id, peekPart: null }
+    }),
+  selectAssembly: (id) =>
+    set((s) => {
+      if (s.selectedAssembly === id) return s
+      get().requestFit()
+      return { selectedAssembly: id, assemblyHidden: [], peekPart: null }
+    }),
+  toggleAssemblyPart: (id) =>
+    set((s) => ({
+      assemblyHidden: s.assemblyHidden.includes(id)
+        ? s.assemblyHidden.filter((h) => h !== id)
+        : [...s.assemblyHidden, id],
+    })),
+  setExplode: (explode) => set({ explode }),
+  setPeekPart: (peekPart) => set({ peekPart }),
+  openPart: (id) =>
+    set(() => {
+      get().requestFit()
+      return { viewMode: 'print' as const, selectedPart: id, peekPart: null }
+    }),
   toggleDisplay: (key) =>
     set((s) => {
       const display = { ...s.display, [key]: !s.display[key] }

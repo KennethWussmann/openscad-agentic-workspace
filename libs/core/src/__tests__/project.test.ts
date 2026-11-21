@@ -40,6 +40,7 @@ const fakeRender = (paths: ReturnType<typeof tempPaths>, id: string, files: stri
         diagnostics: [],
       },
     ],
+    assemblies: [],
     params: [{ name: 'width', type: 'number', initial: 40 }],
     inputs: files.map((f) => ({ path: path.relative(paths.workspace, f).split(path.sep).join('/'), sha: sha1(f) })),
   }

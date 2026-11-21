@@ -1,5 +1,7 @@
 import { type ThreeEvent, useFrame } from '@react-three/fiber'
+import type { Vec3 } from '@scad/protocol'
 import { useMemo } from 'react'
+import { type Box3 as Box3Type, BufferAttribute, BufferGeometry } from 'three'
 import { useStore } from '../../store/store.ts'
 import type { Heat } from '../analysis/heat.ts'
 import { sectionPlane, updateSectionPlane } from '../section/plane.ts'
@@ -15,10 +17,57 @@ export type ModelViewProps = {
   visible: string[]
   extent: number
   heat?: Heat
+  offsets?: Record<string, Vec3>
+  highlight?: string | null
+  sourceColors?: boolean
   onPick?: (e: ThreeEvent<MouseEvent>) => void
 }
 
-export const ModelView = ({ models, ghosts, order, visible, extent, heat, onPick }: ModelViewProps) => {
+const highlightGeometry = (box: Box3Type) => {
+  const [x0, y0, z0] = box.min.toArray()
+  const [x1, y1, z1] = box.max.toArray()
+  const corners = [
+    [x0, y0, z0],
+    [x1, y0, z0],
+    [x1, y1, z0],
+    [x0, y1, z0],
+    [x0, y0, z1],
+    [x1, y0, z1],
+    [x1, y1, z1],
+    [x0, y1, z1],
+  ]
+  const edges = [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 0],
+    [4, 5],
+    [5, 6],
+    [6, 7],
+    [7, 4],
+    [0, 4],
+    [1, 5],
+    [2, 6],
+    [3, 7],
+  ]
+  const positions = edges.flatMap(([a, b]) => [...corners[a], ...corners[b]])
+  const geometry = new BufferGeometry()
+  geometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3))
+  return geometry
+}
+
+export const ModelView = ({
+  models,
+  ghosts,
+  order,
+  visible,
+  extent,
+  heat,
+  offsets,
+  highlight,
+  sourceColors = false,
+  onPick,
+}: ModelViewProps) => {
   const display = useStore((s) => s.display)
   const section = useStore((s) => s.section)
   useFrame(() => {
@@ -34,13 +83,14 @@ export const ModelView = ({ models, ghosts, order, visible, extent, heat, onPick
         const model = models[id]
         if (!model) return null
         const index = order.indexOf(id)
+        const offset = offsets?.[id]
         return (
-          <group key={`${id}:${model.key}`} name={`part:${id}`}>
+          <group key={`${id}:${model.key}`} name={`part:${id}`} position={offset ? [...offset] : [0, 0, 0]}>
             {model.meshes.map((mesh, n) => (
               <PartMesh
                 key={mesh.id}
                 mesh={mesh}
-                color={partColor(mesh, index, display.modelColors)}
+                color={partColor(mesh, index, display.modelColors || sourceColors)}
                 display={display}
                 clip={clip}
                 heat={heat?.[mesh.id]}
@@ -53,6 +103,11 @@ export const ModelView = ({ models, ghosts, order, visible, extent, heat, onPick
               />
             ))}
             {caps && model.meshes.map((mesh) => <StencilPair key={`s${mesh.id}`} mesh={mesh} />)}
+            {highlight === id && (
+              <lineSegments geometry={highlightGeometry(model.box)} renderOrder={7}>
+                <lineBasicMaterial color="#f2a541" depthTest={false} transparent opacity={0.9} />
+              </lineSegments>
+            )}
           </group>
         )
       })}

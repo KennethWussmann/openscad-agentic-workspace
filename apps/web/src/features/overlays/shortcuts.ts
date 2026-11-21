@@ -4,6 +4,7 @@ export const SHORTCUTS: [string, string][] = [
   ['3 / 6', 'Right / left'],
   ['2 / 5', 'Top / bottom'],
   ['F', 'Fit model'],
+  ['A', 'Print / assembly view'],
   ['O', 'Ortho / perspective'],
   ['X', 'X-ray'],
   ['E', 'Edges'],

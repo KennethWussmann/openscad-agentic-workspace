@@ -4,7 +4,22 @@
 #
 # Project-only keys, valid in workspace/<project>/config.yaml but not in this file:
 #   name, description   shown in the viewer and in `pnpm scad list`
-#   parts               the entry files and part selectors that are rendered (see the scad-craft skill)
+#   parts               the entry files and part selectors that are rendered (see the scad-craft skill).
+#                       Optional params: [name, ...] on a part scopes the viewer's parameter panel to it
+#   assemblies          named compositions of the parts, always rendered next to them, e.g.
+#     assemblies:
+#       - id: fitted                     # lowercase-dashed, unique
+#         label: Assembled                # optional, shown in the viewer
+#         file: src/main.scad             # entry file, like parts
+#         defines: { part: "assembly" }   # selector values that make the file emit the assembly
+#         preview: true                   # marks THE preview source (sheet, cover, viewer start view);
+#                                       # at most one per project, assemblies always render
+#       - id: plate
+#         defines: { part: "plate" }
+#         export: true                   # ships as one merged multi-object 3MF at the assembled
+#                                       # positions with per-part colors; bed fit is checked first
+#     The source places every part at its use position with its own color(); the CLI renders the
+#     assembly once per part through the companion define assembly_part = "<part id>" (scad-craft).
 #   sets                named parameter sets: recurring variants of the same model, e.g.
 #     sets:
 #       screw-tray:

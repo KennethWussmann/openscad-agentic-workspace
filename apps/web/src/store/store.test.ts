@@ -14,16 +14,18 @@ const note = {
   source: { kind: 'working' as const, version: null, render: null },
 }
 
+const partDefOf = (id: string) => ({ id, file: 'src/main.scad', defines: {}, preview: true })
+
 describe('projects', () => {
   it('resets view state when switching to another project', () => {
     s().setProject(project({ id: 'a' }))
-    s().togglePart('main')
+    s().toggleAssemblyPart('main')
     s().setEdit('width', 30)
     s().addPoint([0, 0, 0])
     s().addNote(note)
     const fit = s().fitToken
     s().setProject(project({ id: 'b' }))
-    expect(s()).toMatchObject({ hidden: [], edits: {}, pending: null, notes: [], editing: null })
+    expect(s()).toMatchObject({ assemblyHidden: [], edits: {}, pending: null, notes: [], editing: null })
     expect(s().fitToken).toBe(fit + 1)
   })
 
@@ -125,12 +127,48 @@ describe('display', () => {
   })
 })
 
-describe('parts', () => {
-  it('toggles part visibility', () => {
-    s().togglePart('a')
-    s().togglePart('b')
-    s().togglePart('a')
-    expect(s().hidden).toEqual(['b'])
+describe('parts and assemblies', () => {
+  it('toggles assembly part visibility', () => {
+    s().toggleAssemblyPart('a')
+    s().toggleAssemblyPart('b')
+    s().toggleAssemblyPart('a')
+    expect(s().assemblyHidden).toEqual(['b'])
+  })
+
+  it('selects parts and switches view modes, refitting on change', () => {
+    s().setProject(project({ assemblies: [{ id: 'fitted' }] as never }))
+    const fit = s().fitToken
+    s().selectPart('base')
+    expect(s().selectedPart).toBe('base')
+    expect(s().fitToken).toBe(fit + 1)
+    s().setViewMode('assembly')
+    expect(s().viewMode).toBe('assembly')
+    s().selectAssembly('fitted')
+    expect(s().selectedAssembly).toBe('fitted')
+    expect(s().assemblyHidden).toEqual([])
+    s().toggleViewMode()
+    expect(s().viewMode).toBe('print')
+  })
+
+  it('opens a part from the assembly into print view', () => {
+    s().setViewMode('assembly')
+    s().openPart('lid')
+    expect(s()).toMatchObject({ viewMode: 'print', selectedPart: 'lid', peekPart: null })
+  })
+
+  it('keeps a preview assembly project opening in assembly view', () => {
+    s().setProject(project({ assemblies: [{ id: 'hero', preview: true }] as never }))
+    expect(s().viewMode).toBe('assembly')
+    expect(s().selectedAssembly).toBe('hero')
+  })
+
+  it('drops selections that vanish from the project', () => {
+    s().setProject(project({ parts: [partDefOf('base')], assemblies: [{ id: 'fitted' }] as never }))
+    s().selectPart('base')
+    s().selectAssembly('fitted')
+    s().setProject(project({ parts: [partDefOf('lid')], assemblies: [] as never }))
+    expect(s().selectedPart).toBe('lid')
+    expect(s().selectedAssembly).toBeNull()
   })
 })
 

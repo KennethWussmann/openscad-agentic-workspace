@@ -26,12 +26,12 @@ export const effectiveDefines = (
   settings: Settings,
   set: ActiveSet | null,
   overrides: Record<string, DefineValue>,
-  part: PartDef,
+  target: Pick<PartDef, 'id' | 'defines'>,
 ): Record<string, DefineValue> => ({
   ...settings.render.defines,
-  ...(set && setAppliesTo(set.def, part.id) ? set.def.values : {}),
+  ...(set && setAppliesTo(set.def, target.id) ? set.def.values : {}),
   ...overrides,
-  ...part.defines,
+  ...target.defines,
 })
 
 export const exportSetNames = (meta: ProjectMeta) =>

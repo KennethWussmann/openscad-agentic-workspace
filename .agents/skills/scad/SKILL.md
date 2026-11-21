@@ -27,7 +27,7 @@ This skill holds every design rule for the workspace; `AGENTS.md` only points he
 
 ### 1. Understand and propose
 
-Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm -s scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. Do not read the root `config.yaml` for this; `printer` shows the resolved profile, and the file is long and mostly comments. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan a merged 3MF next to the separate parts (scad-export, "Merged multi-object 3MF"). Infer the rest and state your assumptions.
+Ask only what you truly need: key dimensions, what it mates with, printer or process, material, must-have features. If the part is to be printed, run `pnpm -s scad printer <id>` to see what you design for: process (fdm or resin), bed, nozzle or pixel size, layer height and tolerances. Do not read the root `config.yaml` for this; `printer` shows the resolved profile, and the file is long and mostly comments. If the user names a printer or nozzle that is not the active one, pick it in the project's `config.yaml` (`print: { printer: <name> }`, `print: { nozzle: 0.6 }`). A printer that is not defined yet goes into the root `config.yaml` under `printers` (ask for process, build volume, nozzles or pixel size). Note the profile in `brief.md`. Measurements of the real counterpart beat guesses; ask for them. If the design uses several colors or materials in one print (inlays, text, labels, soft grips), plan an `export: true` assembly next to the separate parts (scad-craft, "Assemblies"). Infer the rest and state your assumptions.
 
 Choose the print orientation before modelling: put the largest flat face on the bed, keep functional surfaces (sliding faces, mating faces, hooks) out of overhangs and avoid long bridges over openings. Model in exactly that orientation (see "Design the way you print" in scad-craft) and write it into `brief.md`. If no orientation works without supports or long bridges, propose splitting the part before writing code, not after the first check.
 
@@ -53,9 +53,9 @@ Edit `workspace/<id>/src/*.scad` following scad-craft. Work in steps the user ca
 pnpm -s scad render <id>
 ```
 
-It renders every part (through the dev server when it runs, so the viewer and you see the same result), prints per-part bounding boxes, facet counts, warnings, errors with file:line and ECHO output, then writes `preview/sheet.png`. Exit code 1 means errors: fix them before anything else. A failed part keeps showing its last good model in the viewer, with the error on top.
+It renders every part and every declared assembly (through the dev server when it runs, so the viewer and you see the same result), prints per-part bounding boxes, facet counts, warnings, errors with file:line and ECHO output, then writes `preview/sheet.png`. With a `preview: true` assembly the sheet composes that assembly instead of the parts. Exit code 1 means errors: fix them before anything else. A failed part keeps showing its last good model in the viewer, with the error on top.
 
-`--no-sheet` skips the PNG when you only need the numbers; `--part a,b` renders a subset.
+`--no-sheet` skips the PNG when you only need the numbers; `--part a,b` renders a subset (assemblies only render on a full render).
 
 ### 4. Look at your work, every time
 
@@ -68,14 +68,16 @@ pnpm -s scad snapshot <id> --view back|left|bottom|iso-back|...    # other angle
 pnpm -s scad snapshot <id> --section y=12                         # cut at y=12, keep y<=12
 pnpm -s scad snapshot <id> --section z=3:above --part lid         # keep the part above z=3
 pnpm -s scad snapshot <id> --section y=40 --view front --focus 20,40,1.5:6   # zoom in on one feature
-pnpm -s scad snapshot <id> --part base -D part=assembly --section x=20   # parts fitted together, see below
+pnpm -s scad snapshot <id> --assembly fitted --section x=20      # a fitted assembly, see below
 ```
 
 Snapshots land in `preview/`. Check wall thickness, hidden cavities, hole alignment and overlaps in sections.
 
 The sheet and plain snapshots draw sharp edges as dark outlines, so holes, windows and openings show even when you look straight at them. Sections and `--focus` views have no outlines; to find out whether a cut goes all the way through, take a section through it instead of more angles.
 
-`-D name=value` (repeatable) renders the selected parts with these parameter values into a throwaway model for that one image. `preview/`, `check`, the viewer and exports keep the real render. Use it for views that are not the print layout, mainly the assembled fit of a multi-part project. A part's `defines` in `config.yaml` are overridden too, so pick one part with `--part` when the value selects the whole assembly. Never edit the source to get a different view.
+`-D name=value` (repeatable) renders the selected parts with these parameter values into a throwaway model for that one image. `preview/`, `check`, the viewer and exports keep the real render. Never edit the source to get a different view. For the assembled fit of a multi-part project, prefer a declared assembly ("Assemblies" in scad-craft) and image it with `--assembly <id>`; `-D part=assembly` still works for quick throwaway views.
+
+`--assembly <id>` images one declared assembly at its assembled positions: every part mesh the CLI rendered for it, composed in one scene, with sections, focus and views applied like for parts.
 
 Every snapshot frames the whole part, so a section through a flat or long part shows the cut as a thin strip. When you need to see one feature (a hole profile, a lip, a region `check` reported), add `--focus x,y,z[:radius]`: it clips the model to a cube around that point (radius 5 mm by default) and the view zooms in on it. Combine it with `--section` through the same point and a straight view (`front` for a y cut, `right` for x, `top` for z). Decide what the snapshot has to answer before taking it; if an image does not answer it, focus closer instead of trying more planes.
 
@@ -160,11 +162,12 @@ When asked for files, follow scad-export (`pnpm -s scad release <id> -m "..."`, 
 
 ## The viewer, for reference when talking to the user
 
-- View cube (top right) snaps to faces, edges and corners; keys 0 iso, 1 front, 2 top, 3 right, 4 back, 5 bottom, 6 left, F fit, O ortho/perspective.
+- Print and assembly views: projects with assemblies have a Print/Assembly tab in the parts panel (A toggles). Print view shows one part at a time, centered on the build plate; click a part in the panel to select it. Assembly view shows the selected assembly with one positioned, colored mesh per part: eye toggles per part, click a part to peek (name, highlight and bbox), double-click or the button to open it in print view, and an explode slider that offsets parts from the assembly centroid. Build plate and volume stay visible as an anchor, the outline turns red when the assembly exceeds the volume; checks and overlays never run in assembly view.
+- View cube (top right) snaps to faces, edges and corners; keys 0 iso, 1 front, 2 top, 3 right, 4 back, 5 bottom, 6 left, F fit, O ortho/perspective, A print/assembly.
 - Section (S) with X/Y/Z or free plane and hatched caps; X-ray (X); edges (E); wireframe (W); bounding box dimensions (D); measuring (M, click two points, snaps to vertices).
 - Build plate (G) has the active printer's bed size and is centred under the model like a slicer would place it. A dashed box shows the build volume, labelled with the printer name. The outline and the bounding box dimensions turn red when the model does not fit.
 - Overhang heatmap (H): for fdm, faces past `overhangAngle` shade from amber to red, faces on the bed are teal. For resin, the button reads Islands and marks unsupported start points in red. Wall overlay (T): red under the nozzle (resin: `minFeature`), amber up to `minWall`, fading to grey at twice that. A legend shows the totals.
-- Parameter panel lists customizer parameters with their unit (from the caption, see scad-craft); the user can tweak values (rendered separately, your files stay untouched) and click "Send to agent", which writes a proposal for you. Number fields accept other units of the same kind (`1 m` becomes 1000 for a mm parameter), arithmetic (`1000 - 3 cm`, `100 cm * 2`), comma or dot as decimal separator, and commit on Enter; proposals always carry the value in the parameter's own unit.
+- Parameter panel lists customizer parameters with their unit (from the caption, see scad-craft); in print view it shows only the selected part's parameters when the part declares `params:` in config.yaml, otherwise all. The user can tweak values (rendered separately, your files stay untouched) and click "Send to agent", which writes a proposal for you. Number fields accept other units of the same kind (`1 m` becomes 1000 for a mm parameter), arithmetic (`1000 - 3 cm`, `100 cm * 2`), comma or dot as decimal separator, and commit on Enter; proposals always carry the value in the parameter's own unit.
 - Set dropdown at the top of the parameter panel (only when the project has sets or the user tweaked something): picking a set loads its values as the tweak, values the set changes are marked with their default, values tweaked on top of the set are highlighted. "Update set", "Save as set" and the delete button write `config.yaml` directly, like `pnpm -s scad set`. The 3MF download of a selected set is named after the set.
 - Note tool (N) pins numbered notes on faces, edges and corners; the Notes panel sends them with a snapshot of the view as annotations for you. If a request is about a specific spot that is hard to describe in words, suggest the user pins a note there.
 - Version timeline at the bottom shows checkpoints; the ghost button overlays another version for comparison.

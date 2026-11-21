@@ -97,7 +97,7 @@ The model's coordinates are its print orientation. What the viewer shows, what `
 
 - Pick the orientation before the first line of geometry (scad skill, step 1) and build every module in it. Do not model upright and flip the result at the end with a `print_layout` switch: the overhang and bridge findings of `check` then describe a different object than the one you are thinking about, and the rotations cost more reasoning than they save.
 - Name faces after the print orientation in comments and the brief ("bed face", "top"), and describe the use orientation only where it matters ("hangs with the bed face against the wall").
-- The only view that is not the print layout is how several parts fit together. Give the entry file a `part = "assembly"` option that places the parts in their use position, and look at it with `pnpm -s scad snapshot <id> --part <any> -D part=assembly`. It never becomes a part in `config.yaml`, so it is never checked or exported.
+- The only view that is not the print layout is how several parts fit together. Give the entry file a `part = "assembly"` option that places the parts in their use position and declare it as an assembly in `config.yaml` ("Assemblies" below). Look at it with `pnpm -s scad snapshot <id> --assembly <id>`. An assembly is never a part, so it is never checked or exported as separate files.
 
 ## Geometry habits
 
@@ -165,7 +165,7 @@ What `pnpm -s scad check` reports and the usual fix. Confirm the location with a
 
 ## Multi-part projects
 
-Declare parts in the project `config.yaml`; each part is rendered to its own model and all of them show together in the viewer, laid out on the bed as they print:
+Declare parts in the project `config.yaml`; each part is rendered to its own model, centered at the origin in its print orientation, resting on z = 0:
 
 ```yaml
 name: Sensor Box
@@ -177,14 +177,60 @@ parts:
   - id: lid
     file: src/main.scad
     defines: { part: "lid" }
+    params: [wall, screw_d]      # optional: parameters shown when this part is selected in the viewer
 ```
 
 - A single entry file with a `part` selector parameter is the usual pattern (see the example above). Parameters set through a part's `defines` are hidden from the parameter panel, and they win over parameter set values, so keep part selectors out of sets.
 - A part is an object that is printed; a parameter set is a variant of the whole model. A second plate size that is printed next to the first is a part, a bigger version of the same bin is a set (scad skill, "Parameter sets").
-- Each part is modelled in its own print orientation. Translate parts next to each other in `main()` so they do not overlap on the bed, and keep the assembled position for the `assembly` option only ("Design the way you print"). Check the fit with `pnpm -s scad snapshot <id> --part <any> -D part=assembly --section ...`.
-- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm -s scad export` (used for 2D outlines and merged 3MFs, see scad-export).
-- Parts that belong together in an exact position (second-color inlays and text, multi-material inserts) also need a merged 3MF, because slicers lose the alignment when the user imports separate files. Plan for it from the start: keep body and inlay as separate modules with their own `color()`, and follow "Merged multi-object 3MF" in scad-export.
+- Each part is modelled in its own print orientation, centered at the origin, resting on z = 0. Never translate parts next to each other in the source for the preview: parts live at the origin, positions belong to assemblies ("Assemblies" below). The viewer shows one part at a time, centered on the bed.
+- `preview: false` on a part excludes it from renders and the viewer; it is only produced by `pnpm -s scad export` (used for 2D outlines, see scad-export).
+- Parts that belong together in an exact position (second-color inlays and text, multi-material inserts) also need a merged 3MF, because slicers lose the alignment when the user imports separate files. Prefer an `export: true` assembly for them ("Assemblies"), or follow "Merged multi-object 3MF" in scad-export for the manual lazy-union setup.
 - Separate files per part (`src/base.scad`, `src/lid.scad`) sharing `src/dims.scad` via `include` also works; pick one style per project.
+
+## Assemblies
+
+An assembly is a named composition of the parts: the fitted object, an overview of all parts next to each other, or a print plate. It lives in the same entry file behind a `part` selector value and places every included part at its use position, each with its own `color()`:
+
+```openscad
+part = "base"; // [base, mid, top, pin, assembly, plate]
+assembly_part = ""; // set by the CLI through -D, never a customizer parameter
+
+module main() {
+  if (part == "assembly") {
+    if (assembly_part == "" || assembly_part == "base") color("steelblue") base();
+    if (assembly_part == "" || assembly_part == "mid") translate([0, 0, base_h]) color("teal") mid();
+  }
+  if (part == "plate") {
+    if (assembly_part == "" || assembly_part == "base") color("steelblue") base();
+    if (assembly_part == "" || assembly_part == "mid") translate([0, body_d + 8, 0]) color("teal") mid();
+  }
+  ...
+}
+```
+
+- The `assembly_part == ""` check emits every part at once (for sheet, cover and snapshot images); the CLI otherwise sets `assembly_part = "<part id>"` to emit exactly one part, at its assembled position. The assembly module stays the single source of positions.
+- Declare the assembly in the project `config.yaml`, next to `parts:`:
+
+```yaml
+assemblies:
+  - id: fitted
+    label: Assembled
+    defines: { part: "assembly" }
+    preview: true      # drives sheet.png, the project cover and the viewer's start view
+  - id: plate
+    label: Print plate
+    defines: { part: "plate" }
+    export: true       # ships as one merged multi-object 3MF
+```
+
+- Assemblies always render, one positioned mesh per part; ids are lowercase-dashed and unique. At most one may be `preview: true`.
+- Think about which assemblies make sense for the project:
+  - fitted assembly: everything in its use position; the usual `preview: true` candidate
+  - plate assembly: all parts arranged on the bed in print orientation; the usual `export: true` candidate, the bed must fit it
+  - step-by-step assemblies: the object assembled further in each one, useful as a preview series
+- Check the fit with `pnpm -s scad snapshot <id> --assembly fitted --section ...` instead of throwaway `-D part=assembly` runs. `check` stays parts-only: printability is a property of a part in print orientation.
+- When parts do not fit on one bed, declare multiple plate assemblies and split the parts between them; orientation stays your responsibility.
+- `parts[].params` lists the customizer parameters a part reads, so the viewer shows only those when the part is selected; leave it out to show all.
 
 ## Quality and performance
 

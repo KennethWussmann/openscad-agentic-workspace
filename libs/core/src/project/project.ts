@@ -6,7 +6,7 @@ import { readCheck } from '../check/checker.ts'
 import { loadProjectConfig } from '../config/load.ts'
 import { printProfile } from '../config/profile.ts'
 import { hasProposals, readProposals } from '../proposals/proposals.ts'
-import { readRender } from '../render/store.ts'
+import { previewAssembly, readRender } from '../render/store.ts'
 import { validateSets } from '../sets/validate.ts'
 import { listVersions } from '../versions/versions.ts'
 import { type Paths, projectLayout } from '../workspace/paths.ts'
@@ -78,10 +78,14 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
       const layout = projectLayout(paths, id)
       let name = id
       let description = ''
+      let assemblies: ProjectSummary['assemblies'] = 0
+      let previewAssemblyId: ProjectSummary['previewAssembly'] = null
       try {
         const config = loadProjectConfig(paths, layout.config, id)
         name = config.meta.name
         description = config.meta.description
+        assemblies = config.meta.assemblies.length
+        previewAssemblyId = config.meta.assemblies.find((a) => a.preview)?.id ?? null
       } catch {
         name = id
       }
@@ -100,7 +104,9 @@ export const listProjects = (paths: Paths): ProjectSummary[] => {
         proposal: hasProposals(paths, id),
         cover: existsSync(layout.cover) ? statSync(layout.cover).mtimeMs : null,
         parts: render?.parts.length ?? 0,
-        size: render ? overallSize(render) : null,
+        assemblies,
+        previewAssembly: previewAssemblyId,
+        size: render ? (previewAssembly(render)?.bbox?.size ?? overallSize(render)) : null,
         facets: render ? render.parts.reduce((n, p) => n + (p.facets ?? 0), 0) : null,
         check: readCheck(paths, id)?.status ?? null,
       }
@@ -117,6 +123,7 @@ export const projectState = (paths: Paths, id: string, rendering = false, export
     name: config.meta.name,
     description: config.meta.description,
     parts: config.meta.parts,
+    assemblies: config.meta.assemblies,
     sets: config.meta.sets,
     setIssues: render ? validateSets(config.meta, render.params) : [],
     profile: printProfile(config.settings),

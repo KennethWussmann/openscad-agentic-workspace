@@ -71,6 +71,17 @@ export const checkpoint = ({ paths, project, message, restoredFrom, force }: Che
     cpSync(path.join(layout.dir, p.model), target)
     return { id: p.id, label: p.label, model: toPosix(path.relative(layout.dir, target)), bbox: p.bbox }
   })
+  const assemblies = render.assemblies.map((a) => ({
+    id: a.id,
+    label: a.label,
+    parts: a.parts.map((p) => {
+      if (!p.model) return { id: p.id, label: p.label, model: null, bbox: p.bbox }
+      const target = path.join(dir, 'preview', 'assemblies', a.id, `${p.id}.3mf`)
+      mkdirSync(path.dirname(target), { recursive: true })
+      cpSync(path.join(layout.dir, p.model), target)
+      return { id: p.id, label: p.label, model: toPosix(path.relative(layout.dir, target)), bbox: p.bbox }
+    }),
+  }))
   let sheet: string | null = null
   if (existsSync(layout.sheet) && statSync(layout.sheet).mtimeMs >= Date.parse(render.finishedAt) - 1000) {
     const target = path.join(dir, 'preview', 'sheet.png')
@@ -86,6 +97,7 @@ export const checkpoint = ({ paths, project, message, restoredFrom, force }: Che
     createdAt: new Date().toISOString(),
     ...(restoredFrom ? { restoredFrom } : {}),
     parts,
+    assemblies,
     params,
     inputs: render.inputs,
     libraries: lockedLibraries(paths, loadProjectConfig(paths, layout.config, project).settings),

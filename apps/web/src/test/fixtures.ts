@@ -1,4 +1,6 @@
 import type {
+  AssemblyDef,
+  AssemblyResult,
   FdmProfile,
   ParamDef,
   PartDef,
@@ -46,6 +48,40 @@ export const partDef = (overrides: Partial<PartDef> = {}): PartDef => ({
   ...overrides,
 })
 
+export const assemblyDef = (overrides: Partial<AssemblyDef> = {}): AssemblyDef => ({
+  id: 'fitted',
+  file: 'src/main.scad',
+  defines: { part: 'assembly' },
+  preview: false,
+  export: false,
+  ...overrides,
+})
+
+export const assemblyResult = (overrides: Partial<AssemblyResult> = {}): AssemblyResult => ({
+  id: 'fitted',
+  file: 'src/main.scad',
+  status: 'ok',
+  preview: false,
+  export: false,
+  stale: false,
+  parts: [
+    {
+      id: 'base',
+      model: 'preview/assemblies/fitted/base.3mf',
+      stale: false,
+      bbox: { min: [0, 0, 0], max: [20, 10, 5], size: [20, 10, 5] },
+      facets: 12,
+      vertices: 8,
+      durationMs: 40,
+      diagnostics: [],
+    },
+  ],
+  bbox: { min: [0, 0, 0], max: [20, 10, 5], size: [20, 10, 5] },
+  durationMs: 80,
+  diagnostics: [],
+  ...overrides,
+})
+
 export const partResult = (overrides: Partial<PartResult> = {}): PartResult => ({
   id: 'main',
   file: 'src/main.scad',
@@ -75,6 +111,7 @@ export const renderResult = (overrides: Partial<RenderResult> = {}): RenderResul
   durationMs: 120,
   overrides: {},
   parts: [partResult()],
+  assemblies: [],
   params: [],
   inputs: [{ path: 'box/src/main.scad', sha: 'abc' }],
   ...overrides,
@@ -88,6 +125,7 @@ export const version = (overrides: Partial<VersionMeta> = {}): VersionMeta => ({
   parts: [
     { id: 'main', model: 'versions/v1/main.3mf', bbox: { min: [0, 0, 0], max: [10, 10, 10], size: [10, 10, 10] } },
   ],
+  assemblies: [],
   params: {},
   inputs: [{ path: 'box/src/main.scad', sha: 'old' }],
   libraries: [],
@@ -100,6 +138,7 @@ export const project = (overrides: Partial<ProjectState> = {}): ProjectState => 
   name: 'Box',
   description: 'A plain box',
   parts: [partDef()],
+  assemblies: [],
   sets: {},
   setIssues: [],
   profile: fdmProfile(),
@@ -122,6 +161,8 @@ export const summary = (overrides: Partial<ProjectSummary> = {}): ProjectSummary
   proposal: false,
   cover: null,
   parts: 1,
+  assemblies: 0,
+  previewAssembly: null,
   size: [20, 10, 5],
   facets: 12,
   check: null,

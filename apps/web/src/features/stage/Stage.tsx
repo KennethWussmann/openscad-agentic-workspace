@@ -7,6 +7,7 @@ import { AnalysisLegend } from '../overlays/AnalysisLegend.tsx'
 import { Console } from '../overlays/Console.tsx'
 import { Diagnostics } from '../overlays/Diagnostics.tsx'
 import { ExportToast } from '../overlays/ExportToast.tsx'
+import { PeekCard } from '../overlays/PeekCard.tsx'
 import { TitleBlock } from '../overlays/TitleBlock.tsx'
 import { ToolHint } from '../overlays/ToolHint.tsx'
 import { Timeline } from '../timeline/Timeline.tsx'
@@ -40,6 +41,7 @@ export const Stage = ({ project }: { project: ProjectState }) => {
       <Diagnostics project={project} />
       <ToolHint />
       {!embed && <TitleBlock project={project} />}
+      {!embed && <PeekCard project={project} />}
       {!embed && <AnalysisLegend project={project} />}
       <Console project={project} />
       {!embed && <ExportToast />}

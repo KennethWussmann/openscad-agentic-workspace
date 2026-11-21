@@ -10,11 +10,13 @@ import {
   readProposals,
   readRender,
   requireProject,
+  validatePartParams,
 } from '@scad/core'
 import { type Ctx, need, type Outcome, rel, serverFor } from '../context.ts'
 import { table } from '../format/common.ts'
 import { formatProfile } from '../format/profile.ts'
 import { formatRender } from '../format/render.ts'
+import { formatPartParamIssues } from '../format/sets.ts'
 import { viewerUrl } from '../server.ts'
 
 export const newProject = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
@@ -29,8 +31,16 @@ export const newProject = async ({ paths, flags, args }: Ctx): Promise<Outcome> 
 
 export const list = async ({ paths }: Ctx): Promise<Outcome> => {
   const projects = listProjects(paths)
-  const rows = [['PROJECT', 'NAME', 'STATUS', 'VERSIONS', 'PROPOSAL']]
-  for (const p of projects) rows.push([p.id, p.name, p.status, String(p.versions), p.proposal ? 'pending' : ''])
+  const rows = [['PROJECT', 'NAME', 'STATUS', 'VERSIONS', 'ASSEMBLIES', 'PROPOSAL']]
+  for (const p of projects)
+    rows.push([
+      p.id,
+      p.name,
+      p.status,
+      String(p.versions),
+      p.assemblies ? `${p.assemblies}${p.previewAssembly ? ` (${p.previewAssembly}*)` : ''}` : '-',
+      p.proposal ? 'pending' : '',
+    ])
   return {
     data: projects,
     text: projects.length ? table(rows) : 'No projects yet. Create one with `pnpm scad new <id>`.',
@@ -50,6 +60,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
     project,
     name: config.meta.name,
     parts: config.meta.parts,
+    assemblies: config.meta.assemblies,
     sets: config.meta.sets,
     render: result,
     latestVersion: list.at(-1)?.id ?? null,
@@ -61,6 +72,7 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
   const lines = [
     `${config.meta.name} (${project})  dir ${rel(paths, layout.dir)}`,
     result ? formatRender(result) : '  not rendered yet',
+    ...(result ? formatPartParamIssues(validatePartParams(config.meta, result.params)) : []),
     `  versions: ${list.length}${list.length ? `, latest ${list.at(-1)?.id}` : ''}${data.changedSinceVersion ? ', working copy changed' : ''}`,
     `  printer: ${formatProfile(printProfile(config.settings))}`,
     `  check: ${printCheck.status === 'missing' ? 'not run yet' : printCheck.status === 'stale' ? `outdated (was ${printCheck.result?.status})` : printCheck.status}${printCheck.status === 'pass' ? '' : ` (\`pnpm scad check ${project}\`)`}`,
@@ -69,6 +81,10 @@ export const status = async ({ paths, args }: Ctx): Promise<Outcome> => {
   if (setNames.length)
     lines.push(
       `  sets: ${setNames.map((n) => `${n}${config.meta.sets[n].export ? ' (export)' : ''}`).join(', ')}  (\`pnpm scad sets ${project}\`)`,
+    )
+  if (config.meta.assemblies.length)
+    lines.push(
+      `  assemblies: ${config.meta.assemblies.map((a) => `${a.id}${a.preview ? ' (preview)' : ''}${a.export ? ' (export)' : ''}`).join(', ')}`,
     )
   if (proposals.params)
     lines.push(

@@ -9,6 +9,7 @@ import type { Openscad } from '../openscad/discovery.ts'
 import { mergeParams, parseParamExport } from '../openscad/params.ts'
 import { runOpenscad } from '../openscad/run.ts'
 import { type Paths, projectLayout } from '../workspace/paths.ts'
+import { ASSEMBLY_PART_DEFINE } from './assembly.ts'
 import { concurrency, pool } from './pool.ts'
 
 export type ParamsContext = {
@@ -27,7 +28,7 @@ export const extractParams = async ({
   work,
 }: ParamsContext): Promise<{ params: ParamDef[]; diagnostics: Diagnostic[] }> => {
   const files = [...new Set(config.meta.parts.map((p) => p.file))]
-  const hidden = new Set(config.meta.parts.flatMap((p) => Object.keys(p.defines)))
+  const hidden = new Set([...config.meta.parts.flatMap((p) => Object.keys(p.defines)), ASSEMBLY_PART_DEFINE])
   const diagnostics: Diagnostic[] = []
   const lists = await pool(files, concurrency(), async (file, i = files.indexOf(file)) => {
     const abs = path.resolve(dir, file)

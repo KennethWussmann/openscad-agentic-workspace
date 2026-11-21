@@ -1,4 +1,4 @@
-import type { DefineValue, ParamDef, SetIssue } from '@scad/protocol'
+import type { DefineValue, ParamDef, PartParamIssue, SetIssue } from '@scad/protocol'
 import type { ProjectMeta } from '../config/schema.ts'
 import { sameValue } from '../openscad/params.ts'
 import { setAppliesTo } from './sets.ts'
@@ -52,3 +52,20 @@ export const validateSets = (meta: ProjectMeta, params: ParamDef[]): SetIssue[] 
 }
 
 export const formatSetIssue = (issue: SetIssue) => `set "${issue.set}": ${issue.message}`
+
+export const validatePartParams = (meta: ProjectMeta, params: ParamDef[]): PartParamIssue[] => {
+  const names = new Set(params.map((p) => p.name))
+  const hidden = new Set(meta.parts.flatMap((p) => Object.keys(p.defines)))
+  const issues: PartParamIssue[] = []
+  for (const part of meta.parts)
+    for (const param of part.params ?? []) {
+      if (names.has(param) && !hidden.has(param)) continue
+      const message = hidden.has(param)
+        ? 'overridden by parts[].defines, it never shows in the parameter panel'
+        : `not a customizer parameter of ${part.file} (OpenSCAD has no such name)`
+      issues.push({ part: part.id, param, message: `${param}: ${message}` })
+    }
+  return issues
+}
+
+export const formatPartParamIssue = (issue: PartParamIssue) => `part "${issue.part}": ${issue.message}`

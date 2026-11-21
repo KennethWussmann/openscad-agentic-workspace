@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { type Paths, projectLayout, renderProject, renderSheet, resolveOpenscad } from '@scad/core'
+import { type Paths, projectLayout, renderModels, renderProject, renderSheet, resolveOpenscad } from '@scad/core'
 import type { RenderResult } from '@scad/protocol'
 import { rel, serverFor, settingsFor } from '../context.ts'
 import { viewerApi } from '../server.ts'
@@ -23,7 +23,7 @@ export const sheetPath = (paths: Paths, project: string, set?: string) => {
 export const sheetFor = async (paths: Paths, project: string, result: RenderResult) => {
   const layout = projectLayout(paths, project)
   const out = sheetPath(paths, project, result.set)
-  const models = result.parts.filter((p) => p.model).map((p) => path.join(layout.dir, p.model as string))
+  const models = renderModels(paths, project, result)
   if (!models.length) return { sheet: null, diagnostics: [] }
   const settings = settingsFor(paths, project)
   const openscad = await resolveOpenscad(paths)

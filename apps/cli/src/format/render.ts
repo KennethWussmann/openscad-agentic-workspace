@@ -16,6 +16,17 @@ export const formatRender = (r: RenderResult) => {
     for (const d of echoes.slice(0, 20)) lines.push(`    ECHO: ${d.message}`)
     if (echoes.length > 20) lines.push(`    ... ${echoes.length - 20} more ECHO lines`)
   }
+  for (const a of r.assemblies) {
+    lines.push(
+      `  assembly ${a.id}${a.label ? ` (${a.label})` : ''}: ${a.status}${a.stale ? ', showing last good model' : ''}${a.preview ? '  [preview]' : ''}${a.export ? '  [export]' : ''}`,
+    )
+    if (a.status === 'ok')
+      lines.push(
+        `    parts ${a.parts.map((p) => p.id).join(', ')}  size ${formatBBox(a.bbox)}  facets ${a.parts.reduce((n, p) => n + (p.facets ?? 0), 0)}`,
+      )
+    for (const d of a.diagnostics) lines.push(`    ${formatDiagnostic(d)}`)
+    for (const p of a.parts) for (const d of p.diagnostics) lines.push(`    ${p.id} ${formatDiagnostic(d)}`)
+  }
   if (r.params.length && !r.set)
     lines.push(`  params: ${r.params.map((p) => `${p.name}=${JSON.stringify(p.initial)}`).join(', ')}`)
   return lines.join('\n')

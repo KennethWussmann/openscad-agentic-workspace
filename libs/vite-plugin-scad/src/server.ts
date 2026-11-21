@@ -33,6 +33,7 @@ const failed = (project: string, error: unknown): RenderResult => {
     durationMs: 0,
     overrides: {},
     parts: [],
+    assemblies: [],
     params: [],
     inputs: [],
   }

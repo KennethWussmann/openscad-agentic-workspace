@@ -52,7 +52,7 @@ test('renders on demand from the top bar', async ({ page, viewer, project }) => 
   await viewer.waitRendered()
 })
 
-test('shows every part of an assembly and solos one', async ({ viewer, project }) => {
+test('selects one part at a time in print view', async ({ viewer, project }) => {
   project.write(
     'config.yaml',
     [
@@ -67,12 +67,13 @@ test('shows every part of an assembly and solos one', async ({ viewer, project }
   project.write('src/lid.scad', 'translate([0, 0, 12]) cube([30, 20, 2]);\n')
   await viewer.open(project.id)
   await expect(viewer.sidebar.locator('li.part')).toHaveCount(2)
-  await expect(viewer.envelope).toContainText('30.00 x 20.00 x 14.00')
-  await expect(viewer.cell('Part')).toContainText('ASSY')
+  await expect(viewer.sidebar.locator('li.part.is-selected')).toHaveCount(1)
+  await expect(viewer.cell('Part')).toContainText('base')
+  await expect(viewer.envelope).toContainText('30.00 x 20.00 x 10.00')
 
   await viewer.sidebar.getByRole('button', { name: /Lid/ }).click()
   await expect(viewer.envelope).toContainText('30.00 x 20.00 x 2.00')
-  await viewer.sidebar.getByRole('button', { name: 'Show all' }).click()
-  await viewer.sidebar.getByRole('button', { name: 'Toggle visibility' }).first().click()
-  await expect(viewer.envelope).toContainText('30.00 x 20.00 x 2.00')
+  await expect(viewer.cell('Part')).toContainText('lid')
+  await viewer.sidebar.getByRole('button', { name: /Base/ }).click()
+  await expect(viewer.envelope).toContainText('30.00 x 20.00 x 10.00')
 })

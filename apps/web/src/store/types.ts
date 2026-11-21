@@ -36,6 +36,8 @@ export type SectionState = {
 
 export type Tool = 'orbit' | 'measure' | 'annotate'
 
+export type ViewMode = 'print' | 'assembly'
+
 export type NoteDraft = Omit<Annotation, 'n'> & { id: number }
 
 export type ExportNotice = { id: number; result: ExportResult | null; error: string | null }

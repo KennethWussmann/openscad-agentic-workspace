@@ -50,6 +50,12 @@ Configured in `config.yaml` under `export.formats` (root default `[3mf, stl]`), 
 | `svg`, `dxf`, `pdf` | 2D outlines for laser/CNC cutting; the part must produce 2D geometry |
 | `csg` | OpenSCAD's flattened CSG tree, for debugging or other CSG tools |
 
+## Print-plate assemblies (merged 3MF from assembled positions)
+
+An assembly with `export: true` in the project `config.yaml` exports as one merged multi-object 3MF: `{project}-{assembly}.3mf`, every part at its assembled position with its own color, object names from the part labels. `pnpm scad export` and `release` write it next to the part files, and the build volume is checked first: the export FAILs when the assembled bounding box exceeds the bed.
+
+Use it for print plates (all parts arranged on the bed in print orientation, the agent plans the packing, dumb is fine: next to each other, correct orientation, split into several plate assemblies when they do not fit) and for multi-color or multi-material sets that must keep their alignment. Model the plate in the source behind its own selector value (`part = "plate"`), see "Assemblies" in the scad-craft skill. In Bambu Studio the user answers yes to "Load as a single object with multiple parts?" and assigns a filament per part.
+
 ## Merged multi-object 3MF (multi-color and multi-material)
 
 Every part exports to its own file, and a 3MF from OpenSCAD normally holds one merged mesh. When the user imports several part files into a slicer, Bambu Studio, Orca and PrusaSlicer re-centre each one and lose the alignment between them. Offer a merged 3MF whenever parts only make sense together in their exact relative position:

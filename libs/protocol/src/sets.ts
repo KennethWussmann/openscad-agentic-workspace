@@ -27,6 +27,12 @@ export type SetIssue = {
   message: string
 }
 
+export type PartParamIssue = {
+  part: string
+  param: string
+  message: string
+}
+
 export type SaveSetInput = {
   name: string
   label?: string

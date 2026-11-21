@@ -156,6 +156,18 @@ const PartSchema = z.strictObject({
   file: z.string().default('src/main.scad'),
   defines: Defines.default({}),
   preview: z.boolean().default(true),
+  params: z.array(z.string().min(1)).optional(),
+})
+
+const AssemblyId = z.string().regex(/^[a-z0-9][a-z0-9-]*$/, 'assembly ids are lowercase-dashed')
+
+const AssemblySchema = z.strictObject({
+  id: AssemblyId,
+  label: z.string().optional(),
+  file: z.string().default('src/main.scad'),
+  defines: Defines.default({}),
+  preview: z.boolean().default(false),
+  export: z.boolean().default(false),
 })
 
 const SetSchema = z.strictObject({
@@ -174,10 +186,24 @@ export const ProjectMetaSchema = z
       .min(1)
       .default([{ id: 'main', file: 'src/main.scad', defines: {}, preview: true }])
       .refine((parts) => new Set(parts.map((p) => p.id)).size === parts.length, 'part ids must be unique'),
+    assemblies: z
+      .array(AssemblySchema)
+      .default([])
+      .refine(
+        (assemblies) => new Set(assemblies.map((a) => a.id)).size === assemblies.length,
+        'assembly ids must be unique',
+      ),
     sets: z.record(z.string(), SetSchema).default({}),
   })
   .superRefine((meta, ctx) => {
     const ids = new Set(meta.parts.map((p) => p.id))
+    const previews = meta.assemblies.filter((a) => a.preview)
+    if (previews.length > 1)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['assemblies'],
+        message: `at most one assembly can be the preview source, found ${previews.map((a) => a.id).join(', ')}`,
+      })
     for (const [name, set] of Object.entries(meta.sets)) {
       if (!SET_NAME.test(name))
         ctx.addIssue({ code: 'custom', path: ['sets', name], message: 'set names are lowercase-dashed' })

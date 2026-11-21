@@ -10,8 +10,11 @@ export const Diagnostics = ({ project }: { project: ProjectState }) => {
   const errors = [
     ...(render.error ? [{ level: 'error', message: render.error } as Diagnostic] : []),
     ...render.parts.flatMap((p) => p.diagnostics.filter((d) => d.level === 'error').map((d) => ({ ...d, part: p.id }))),
+    ...render.assemblies.flatMap((a) =>
+      a.diagnostics.filter((d) => d.level === 'error').map((d) => ({ ...d, part: a.id })),
+    ),
   ]
-  const stale = render.parts.some((p) => p.stale)
+  const stale = render.parts.some((p) => p.stale) || render.assemblies.some((a) => a.stale)
   return (
     <div className="diagnostics" role="alert">
       <header>

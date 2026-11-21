@@ -3,7 +3,7 @@ import type { CheckResult, CheckStatus } from './check.ts'
 import type { APP_ID, ExportFormat } from './constants.ts'
 import type { Vec3 } from './geometry.ts'
 import type { PrintProfile } from './profile.ts'
-import type { DefineValue, Diagnostic, PartDef, RenderResult } from './render.ts'
+import type { AssemblyDef, DefineValue, Diagnostic, PartDef, RenderResult } from './render.ts'
 import type { ParamSets, SetIssue } from './sets.ts'
 import type { VersionMeta } from './versions.ts'
 
@@ -29,6 +29,8 @@ export type ProjectSummary = {
   proposal: boolean
   cover: number | null
   parts: number
+  assemblies: number
+  previewAssembly: string | null
   size: Vec3 | null
   facets: number | null
   check: CheckStatus | null
@@ -39,6 +41,7 @@ export type ProjectState = {
   name: string
   description: string
   parts: PartDef[]
+  assemblies: AssemblyDef[]
   sets: ParamSets
   setIssues: SetIssue[]
   profile: PrintProfile
@@ -56,6 +59,7 @@ export type ExportedFile = {
   format: ExportFormat
   file: string
   ok: boolean
+  assembly?: boolean
   diagnostics: Diagnostic[]
 }
 

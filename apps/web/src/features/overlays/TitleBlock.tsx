@@ -19,7 +19,9 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
   const edits = useStore((s) => s.edits)
   const activeSet = useStore((s) => s.activeSet)
   const bounds = useStore((s) => s.bounds)
-  const solo = useStore((s) => s.solo)
+  const viewMode = useStore((s) => s.viewMode)
+  const selectedPart = useStore((s) => s.selectedPart)
+  const selectedAssembly = useStore((s) => s.selectedAssembly)
   const tweaked = Object.keys(edits).length > 0 && !versionId
   const onSet = Boolean(activeSet) && !tweaked && !versionId
   const size = bounds ? bounds[1].map((v, i) => v - bounds[0][i]) : null
@@ -40,7 +42,9 @@ export const TitleBlock = ({ project }: { project: ProjectState }) => {
         <span className="mono">{size ? fmtVec(size) : '-'}</span>
       </Cell>
       <Cell label="Part" minor>
-        <span className="mono">{solo ?? (project.parts.length > 1 ? 'ASSY' : project.parts[0]?.id)}</span>
+        <span className="mono">
+          {viewMode === 'assembly' ? (selectedAssembly ?? '-') : (selectedPart ?? project.parts[0]?.id ?? '-')}
+        </span>
       </Cell>
       <Cell label="Units" minor>
         <span className="mono">mm</span>

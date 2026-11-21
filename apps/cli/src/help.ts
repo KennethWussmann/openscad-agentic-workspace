@@ -7,21 +7,22 @@ Setup
   stop                                    Stop the background dev server
 
 Projects
-  list                                    All projects with render status, versions, pending proposals
+  list                                    All projects with render status, versions, assemblies, pending proposals
   new <project> [--name N] [--description D] [--from <project>]
-  status <project>                        Last render, diagnostics, version state, proposal
+  status <project>                        Last render, diagnostics, version state, assemblies, proposal
   render <project> [--part a,b] [--no-sheet] [--set <set>]
                                           Render all parts to preview/*.3mf (through the dev server when running),
                                           then preview/sheet.png (2x2: iso | front / right | top).
                                           --set renders a parameter set into preview/sets/<set>/ and
                                           preview/sheet-<set>.png instead
   snapshot <project> [--view iso|front|back|left|right|top|bottom|iso-back] [--section x=10[:above]]
-           [--focus x,y,z[:radius]] [--part a,b] [--set <set>] [-D name=value ...] [--size 900] [--out name.png]
+           [--focus x,y,z[:radius]] [--part a,b | --assembly <id>] [--set <set>] [-D name=value ...] [--size 900] [--out name.png]
                                           Extra PNG view or cross-section into preview/. --focus clips the model
                                           to a cube around the point (radius 5 mm) so the view zooms in on it.
-                                          -D renders the parts with these parameter values into a throwaway model
-                                          for this image only (e.g. -D part=assembly); preview/, check and export
-                                          are untouched. --set uses a parameter set's values (below part defines)
+                                          --assembly images one assembly at its assembled positions, with
+                                          sections, focus and views. -D renders the parts with these parameter
+                                          values into a throwaway model for this image only; preview/, check and
+                                          export are untouched. --set uses a parameter set's values (below defines)
   params <project>                        Customizer parameters with values, units, ranges and options
   printer [project]                       Active printer profile (process, bed, nozzle, tolerances) and all printers
   check <project> [--part a,b] [--all] [--set <set>]
@@ -32,7 +33,10 @@ Projects
                                           --set checks that set's render and writes preview/check-<set>.json
   export <project> [--formats 3mf,stl,...] [--part a,b] [--set <set> | --sets a,b|all]
                                           Write configured formats to out/. --sets all = default model + every set;
-                                          set files use {set} in export.filename, else get a -<set> suffix
+                                          set files use {set} in export.filename, else get a -<set> suffix.
+                                          Assemblies with export: true ship as one merged multi-object 3MF
+                                          per assembly, {project}-{assembly}, parts at their assembled positions
+                                          with per-part colors; the build volume is checked first
 
 Parameter sets (named variants in the project config.yaml under sets:)
   sets <project>                          Every set with label, export flag and how it differs from the defaults
