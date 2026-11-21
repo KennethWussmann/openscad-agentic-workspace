@@ -314,6 +314,136 @@ describe('with OpenSCAD', () => {
     })
   })
 
+  it('renders, snapshots and exports declared assemblies', () => {
+    expect(scad('new', 'box-lid').code).toBe(0)
+    writeFileSync(
+      path.join(workspace, 'box-lid', 'src', 'main.scad'),
+      `/* [Size] */
+// Body height (mm)
+body_h = 10; // [5:30]
+lid_h = 4;
+body_d = 20;
+
+/* [Hidden] */
+part = "body"; // [body, lid, assembly, plate]
+assembly_part = "";
+
+main();
+
+module main() {
+  if (part == "body") color("steelblue") body();
+  if (part == "lid") color("teal") lid();
+  if (part == "assembly") {
+    if (assembly_part == "" || assembly_part == "body") color("steelblue") body();
+    if (assembly_part == "" || assembly_part == "lid") translate([0, 0, body_h]) color("teal") lid();
+  }
+  if (part == "plate") {
+    if (assembly_part == "" || assembly_part == "body") color("steelblue") body();
+    if (assembly_part == "" || assembly_part == "lid") translate([0, body_d + 8, 0]) color("teal") lid();
+  }
+}
+
+module body() { cube([20, body_d, body_h]); }
+module lid() { cube([20, body_d, lid_h]); }
+`,
+    )
+    writeFileSync(
+      path.join(workspace, 'box-lid', 'config.yaml'),
+      `name: Box Lid
+parts:
+  - id: body
+    defines: { part: "body" }
+    params: [body_h]
+  - id: lid
+    defines: { part: "lid" }
+assemblies:
+  - id: fitted
+    label: Assembled
+    defines: { part: "assembly" }
+    preview: true
+  - id: plate
+    defines: { part: "plate" }
+    export: true
+`,
+    )
+    const render = json<{
+      status: string
+      sheet: string | null
+      parts: { id: string; model: string }[]
+      assemblies: {
+        id: string
+        status: string
+        preview: boolean
+        export: boolean
+        bbox: { size: number[] } | null
+        parts: { id: string; model: string; bbox: { min: number[] } }[]
+      }[]
+    }>('render', 'box-lid')
+    expect(render.data.status).toBe('ok')
+    expect(render.data.assemblies.map((a) => [a.id, a.preview, a.export])).toEqual([
+      ['fitted', true, false],
+      ['plate', false, true],
+    ])
+    const fitted = render.data.assemblies[0]
+    expect(fitted.parts.map((p) => p.id)).toEqual(['body', 'lid'])
+    expect(fitted.parts[1].model).toMatch(/preview\/assemblies\/fitted\/lid\.3mf$/)
+    expect(fitted.parts[1].bbox.min).toEqual([0, 0, 10])
+    expect(fitted.bbox?.size).toEqual([20, 20, 14])
+    for (const p of fitted.parts) expect(existsSync(path.join(workspace, 'box-lid', p.model))).toBe(true)
+    const status = scad('status', 'box-lid')
+    expect(status.stdout).toContain('assemblies: fitted (preview), plate (export)')
+    expect(scad('list').stdout).toMatch(/box-lid +Box Lid +\w+ +\d+ +2 \(fitted\*\)/)
+    const snap = json<{ ok: boolean; file: string }>('snapshot', 'box-lid', '--assembly', 'fitted', '--section', 'y=10')
+    expect(snap.data.ok).toBe(true)
+    expect(snap.data.file).toMatch(/snapshot-auto-y10-below-assembly-fitted\.png$/)
+    expect(scad('snapshot', 'box-lid', '--assembly', 'nope').code).toBe(1)
+    expect(scad('snapshot', 'box-lid', '--assembly', 'fitted', '--part', 'body').code).toBe(2)
+    const version = json<{ id: string; assemblies: { id: string; parts: { model: string }[] }[] }>(
+      'checkpoint',
+      'box-lid',
+      '-m',
+      'Assemblies',
+    )
+    expect(version.data.assemblies[0].parts[0].model).toMatch(/versions\/v001\/preview\/assemblies\/fitted\/body\.3mf$/)
+    const exported = json<{ files: { part: string; file: string; ok: boolean; assembly?: boolean }[] }>(
+      'export',
+      'box-lid',
+      '--formats',
+      '3mf',
+    )
+    const plate = exported.data.files.find((f) => f.assembly)
+    expect(plate).toMatchObject({ part: 'plate', ok: true })
+    expect(plate?.file).toMatch(/out\/box-lid-plate\.3mf$/)
+    expect(readFileSync(path.join(workspace, 'box-lid', plate?.file as string))).not.toHaveLength(0)
+  })
+
+  it('fails the assembly export when it does not fit the build volume', () => {
+    writeFileSync(
+      path.join(workspace, 'box-lid', 'src', 'main.scad'),
+      `part = "plate";
+assembly_part = "";
+main();
+module main() {
+  if (assembly_part == "" || assembly_part == "body") color("steelblue") translate([0, 0, 0]) cube([260, 250, 20]);
+  if (assembly_part == "" || assembly_part == "lid") color("teal") translate([0, 20, 0]) cube([260, 120, 4]);
+}
+`,
+    )
+    writeFileSync(
+      path.join(workspace, 'box-lid', 'config.yaml'),
+      'name: Box Lid\nparts:\n  - id: body\nassemblies:\n  - id: plate\n    defines: { part: "plate" }\n    export: true\n',
+    )
+    const failed = json<{ files: { ok: boolean; assembly?: boolean; diagnostics: { message: string }[] }[] }>(
+      'export',
+      'box-lid',
+      '--formats',
+      '3mf',
+    )
+    const plate = failed.data.files.find((f) => f.assembly)
+    expect(plate?.ok).toBe(false)
+    expect(plate?.diagnostics[0].message).toMatch(/does not fit the build volume/)
+  })
+
   it('checks islands and trapped resin instead of overhangs for a resin printer', () => {
     writeFileSync(
       path.join(workspace, 'clip', 'src', 'main.scad'),

@@ -4,7 +4,7 @@ import type { Paths } from '../workspace/paths.ts'
 import { type ProjectConfig, ProjectMetaSchema, type Settings, SettingsSchema } from './schema.ts'
 import { deepMerge, type Plain, readYaml, setYamlValue } from './yaml.ts'
 
-const META_KEYS = ['name', 'description', 'parts', 'sets'] as const
+const META_KEYS = ['name', 'description', 'parts', 'assemblies', 'sets'] as const
 
 const formatIssues = (file: string, error: z.ZodError) =>
   `Invalid config in ${file}:\n${error.issues.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`).join('\n')}`

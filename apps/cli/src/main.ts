@@ -20,6 +20,7 @@ const main = async () => {
       description: { type: 'string' },
       from: { type: 'string' },
       part: { type: 'string' },
+      assembly: { type: 'string' },
       sheet: { type: 'boolean' },
       view: { type: 'string' },
       section: { type: 'string' },

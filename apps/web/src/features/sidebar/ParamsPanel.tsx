@@ -69,8 +69,13 @@ export const ParamsPanel = ({ project }: { project: ProjectState }) => {
   const versionId = useStore((s) => s.versionId)
   const activeSet = useStore((s) => s.activeSet)
   const tweakRendering = useStore((s) => s.rendering.tweak)
+  const viewMode = useStore((s) => s.viewMode)
+  const selectedPart = useStore((s) => s.selectedPart)
   const [note, setNote] = useState('')
-  const params = project.render?.params ?? []
+  const allParams = project.render?.params ?? []
+  const scope =
+    viewMode === 'print' ? (project.parts.find((p) => p.id === selectedPart)?.params ?? undefined) : undefined
+  const params = scope ? allParams.filter((p) => scope.includes(p.name)) : allParams
   const changed = Object.keys(edits).length
   const values = activeSet ? (project.sets[activeSet]?.values ?? {}) : {}
   return (

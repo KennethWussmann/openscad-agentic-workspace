@@ -29,6 +29,7 @@ export const useKeys = () => {
       }
       const actions: Record<string, () => void> = {
         f: () => fit(),
+        a: () => s.toggleViewMode(),
         o: toggleOrtho,
         x: () => s.toggleDisplay('xray'),
         e: () => s.toggleDisplay('edges'),

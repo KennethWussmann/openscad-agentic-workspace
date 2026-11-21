@@ -50,7 +50,7 @@ test('exports the selected set under its name', async ({ page, viewer, project }
   await page.getByRole('combobox', { name: 'Parameter set' }).selectOption('wide')
   await expect(viewer.envelope).toContainText('40.00 x 10.00 x 5.00')
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export 3MF (set wide)' }).click()
+  await page.getByRole('button', { name: 'Export 3MF (main, set wide)' }).click()
   const toast = page.locator('.export-toast')
   await expect(toast).toContainText('set: wide')
   await expect(toast).toContainText(`${project.id}-main-wide.3mf`)

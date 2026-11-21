@@ -42,8 +42,17 @@ export const createApiClient = (origin = '') => {
     tweak: (id: string, params: Record<string, DefineValue>) =>
       call<RenderResult>(`${projectRoute(id)}/tweak`, { method: 'POST', body: { params } }),
     clearTweak: (id: string) => call<Ok>(`${projectRoute(id)}/tweak`, { method: 'DELETE' }),
-    exportModels: (id: string, overrides: Record<string, DefineValue>, set: string | null = null) =>
-      call<ExportResult>(`${projectRoute(id)}/export`, { method: 'POST', body: { overrides, set: set ?? undefined } }),
+    exportModels: (
+      id: string,
+      overrides: Record<string, DefineValue>,
+      set: string | null = null,
+      part: string | null = null,
+      assembly: string | null = null,
+    ) =>
+      call<ExportResult>(`${projectRoute(id)}/export`, {
+        method: 'POST',
+        body: { overrides, set: set ?? undefined, part: part ?? undefined, assembly: assembly ?? undefined },
+      }),
     saveSet: (id: string, input: SaveSetInput) =>
       call<SetsResponse>(`${projectRoute(id)}/sets`, { method: 'POST', body: input }),
     deleteSet: (id: string, name: string) =>

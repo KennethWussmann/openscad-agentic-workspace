@@ -15,12 +15,14 @@ const RailLabel = ({ label, count }: { label: string; count: number }) => (
 
 const Rail = ({ project }: { project: ProjectState }) => {
   const toggleSidebar = useStore((s) => s.toggleSidebar)
+  const viewMode = useStore((s) => s.viewMode)
   const changed = useStore((s) => Object.keys(s.edits).length)
   const notes = useStore((s) => s.notes.length)
+  const count = viewMode === 'assembly' ? project.assemblies.length : project.parts.length
   return (
     <button type="button" className="sidebar-rail" onClick={toggleSidebar} title="Show panel (B)">
       <PanelLeftOpen size={15} />
-      <RailLabel label="Parts" count={project.parts.length} />
+      <RailLabel label={viewMode === 'assembly' ? 'Assembly' : 'Parts'} count={count} />
       <RailLabel label="Notes" count={notes} />
       <RailLabel label="Parameters" count={project.render?.params.length ?? 0} />
       {changed > 0 && <span className="rail-badge mono">{changed}</span>}

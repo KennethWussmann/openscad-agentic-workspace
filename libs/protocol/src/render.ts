@@ -20,6 +20,16 @@ export type PartDef = {
   file: string
   defines: Record<string, DefineValue>
   preview: boolean
+  params?: string[]
+}
+
+export type AssemblyDef = {
+  id: string
+  label?: string
+  file: string
+  defines: Record<string, DefineValue>
+  preview: boolean
+  export: boolean
 }
 
 export type PartResult = {
@@ -54,6 +64,32 @@ export type ParamDef = {
   options?: ParamOption[]
 }
 
+export type AssemblyPart = {
+  id: string
+  label?: string
+  model: string | null
+  stale: boolean
+  bbox: BBox | null
+  facets: number | null
+  vertices: number | null
+  durationMs: number
+  diagnostics: Diagnostic[]
+}
+
+export type AssemblyResult = {
+  id: string
+  label?: string
+  file: string
+  status: 'ok' | 'error'
+  preview: boolean
+  export: boolean
+  stale: boolean
+  parts: AssemblyPart[]
+  bbox: BBox | null
+  durationMs: number
+  diagnostics: Diagnostic[]
+}
+
 export type InputFile = {
   path: string
   sha: string
@@ -69,6 +105,7 @@ export type RenderResult = {
   durationMs: number
   overrides: Record<string, DefineValue>
   parts: PartResult[]
+  assemblies: AssemblyResult[]
   params: ParamDef[]
   inputs: InputFile[]
 }

@@ -10,6 +10,7 @@ const result = (n: number, overrides: Record<string, DefineValue>): RenderResult
   durationMs: 0,
   overrides,
   parts: [],
+  assemblies: [],
   params: [],
   inputs: [],
 })

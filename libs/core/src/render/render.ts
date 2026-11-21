@@ -8,6 +8,7 @@ import { syncLibraries } from '../libraries/vendor.ts'
 import type { Openscad } from '../openscad/discovery.ts'
 import { resolveSet, setParts } from '../sets/sets.ts'
 import { type Paths, projectLayout } from '../workspace/paths.ts'
+import { assemblyDir, renderAssembly } from './assembly.ts'
 import { extractParams } from './params.ts'
 import { emptyPart, renderPart } from './part.ts'
 import { concurrency, pool } from './pool.ts'
@@ -62,6 +63,17 @@ export const renderProject = async (opts: RenderOptions): Promise<RenderResult> 
         previous?.parts.find((r) => r.id === p.id) ??
         emptyPart(p, [{ level: 'error', message: 'Not rendered yet' }]),
     )
+    const assemblyDefs = opts.parts ? [] : config.meta.assemblies
+    const assemblyPartIds = setParts(config.meta.parts, set).map((p) => p.id)
+    const assemblies = await pool(assemblyDefs, concurrency(), (assembly) =>
+      renderAssembly(
+        ctx,
+        assembly,
+        assemblyPartIds,
+        assemblyDir(outDir, assembly.id),
+        previous?.assemblies.find((a) => a.id === assembly.id),
+      ),
+    )
     const { params, diagnostics: paramDiagnostics } = await paramsTask
     if (paramDiagnostics.length && parts[0]) parts[0].diagnostics.push(...paramDiagnostics)
     if (existsSync(layout.config)) deps.add(layout.config)
@@ -74,12 +86,13 @@ export const renderProject = async (opts: RenderOptions): Promise<RenderResult> 
     const result: RenderResult = {
       project,
       ...(set ? { set: set.name } : {}),
-      status: parts.every((p) => p.status === 'ok') ? 'ok' : 'error',
+      status: parts.every((p) => p.status === 'ok') && assemblies.every((a) => a.status === 'ok') ? 'ok' : 'error',
       startedAt: startedAt.toISOString(),
       finishedAt: finishedAt.toISOString(),
       durationMs: finishedAt.getTime() - startedAt.getTime(),
       overrides,
       parts,
+      assemblies,
       params,
       inputs,
     }

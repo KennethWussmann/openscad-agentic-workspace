@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { useStore } from '../../store/store.ts'
-import { partDef, partResult, project, renderResult, resinProfile, version } from '../../test/fixtures.ts'
+import { assemblyDef, partResult, project, renderResult, resinProfile, version } from '../../test/fixtures.ts'
 import { AnalysisLegend } from './AnalysisLegend.tsx'
 import { Console } from './Console.tsx'
 import { Diagnostics } from './Diagnostics.tsx'
@@ -114,12 +114,16 @@ describe('TitleBlock', () => {
     expect(cell('Showing')).toHaveTextContent('TWEAK')
   })
 
-  it('shows assemblies and soloed parts', () => {
-    const assembly = project({ parts: [partDef({ id: 'lid' }), partDef({ id: 'base' })] })
-    render(<TitleBlock project={assembly} />)
-    expect(cell('Part')).toHaveTextContent('ASSY')
-    act(() => useStore.setState({ solo: 'lid' }))
-    expect(cell('Part')).toHaveTextContent('lid')
+  it('names the selected part and assembly', () => {
+    const withAssembly = project({ assemblies: [assemblyDef({ id: 'fitted' })] })
+    const { rerender } = render(<TitleBlock project={withAssembly} />)
+    expect(cell('Part')).toHaveTextContent('main')
+    act(() => useStore.getState().selectPart('base'))
+    expect(cell('Part')).toHaveTextContent('base')
+    act(() => useStore.getState().setViewMode('assembly'))
+    rerender(<TitleBlock project={withAssembly} />)
+    act(() => useStore.getState().selectAssembly('fitted'))
+    expect(cell('Part')).toHaveTextContent('fitted')
   })
 })
 

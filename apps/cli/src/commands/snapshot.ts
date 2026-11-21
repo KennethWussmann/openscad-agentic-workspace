@@ -15,7 +15,7 @@ import {
   type ViewName,
 } from '@scad/core'
 import { unionBoxes } from '@scad/geometry'
-import type { DefineValue, PartResult, Vec3 } from '@scad/protocol'
+import type { BBox, DefineValue, Diagnostic, Vec3 } from '@scad/protocol'
 import { type Ctx, need, type Outcome, parseDefines, partsFlag, rel, settingsFor, UsageError } from '../context.ts'
 import { formatDiagnostic } from '../format/common.ts'
 
@@ -36,19 +36,46 @@ const parseFocus = (raw: string): Focus => {
   return { center: center as Vec3, radius: r }
 }
 
-const renderedParts = async (ctx: Ctx, project: string, dir: string, defines: Record<string, DefineValue>) => {
+type MeshPart = { id: string; model: string | null; bbox: BBox | null; diagnostics: Diagnostic[] }
+
+const renderedParts = async (
+  ctx: Ctx,
+  project: string,
+  dir: string,
+  defines: Record<string, DefineValue>,
+): Promise<MeshPart[]> => {
   const parts = partsFlag(ctx.flags)
   const set = ctx.flags.set ?? null
-  if (Object.keys(defines).length || set) {
+  const assembly = ctx.flags.assembly ?? null
+  if (assembly && parts) throw new UsageError('Use either --assembly or --part, not both')
+  if (Object.keys(defines).length || set || assembly) {
     const openscad = await resolveOpenscad(ctx.paths)
-    return renderTemporary({ paths: ctx.paths, project, openscad, defines, outDir: dir, parts, set })
+    const rendered = await renderTemporary({
+      paths: ctx.paths,
+      project,
+      openscad,
+      defines,
+      outDir: dir,
+      parts,
+      ...(assembly ? { assembly } : {}),
+      set,
+    })
+    return Array.isArray(rendered) ? rendered : rendered.parts
   }
   const result = readRender(ctx.paths, project)
   if (!result) throw new Error(`Render ${project} first`)
+  if (assembly) {
+    const found = result.assemblies.find((a) => a.id === assembly)
+    if (!found)
+      throw new UsageError(
+        `Unknown assembly "${assembly}". Assemblies: ${result.assemblies.map((a) => a.id).join(', ') || 'none'}`,
+      )
+    return found.parts
+  }
   return result.parts.filter((p) => !parts || parts.includes(p.id))
 }
 
-const failure = (parts: PartResult[]) =>
+const failure = (parts: MeshPart[]) =>
   [
     'Render with -D or --set failed',
     ...parts.flatMap((p) => p.diagnostics.map((d) => `  ${formatDiagnostic(d)}`)),
@@ -59,7 +86,7 @@ export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
   const project = need(args[0], 'project id')
   const layout = requireProject(paths, project)
   const defines = parseDefines(flags.define)
-  const defined = Object.keys(defines).length > 0 || Boolean(flags.set)
+  const defined = Object.keys(defines).length > 0 || Boolean(flags.set) || Boolean(flags.assembly)
   const section = flags.section ? parseSection(flags.section) : null
   const focus = flags.focus ? parseFocus(flags.focus) : null
   if (flags.view && !(flags.view in VIEWS))
@@ -72,14 +99,15 @@ export const snapshot = async (ctx: Ctx): Promise<Outcome> => {
   const size = Number(flags.size ?? 900)
   const name =
     flags.out ??
-    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}${flags.set ? `-${flags.set}` : ''}${Object.keys(defines).length ? '-defined' : ''}.png`
+    `snapshot-${flags.view ?? 'auto'}${section ? `-${section.axis}${section.at}-${section.keep}` : ''}${focus ? `-at${focus.center.join('_')}` : ''}${flags.set ? `-${flags.set}` : ''}${flags.assembly ? `-assembly-${flags.assembly}` : ''}${Object.keys(defines).length ? '-defined' : ''}.png`
   const out = path.join(layout.preview, path.basename(name))
   const work = path.join(layout.temp, `snapshot-${randomBytes(4).toString('hex')}`)
   try {
     const rendered = await renderedParts(ctx, project, work, defines)
     const selected = rendered.filter((p) => p.model)
     if (defined && selected.length < rendered.length) throw new Error(failure(rendered.filter((p) => !p.model)))
-    if (!selected.length) throw new Error('No rendered parts match')
+    if (!selected.length)
+      throw new Error(flags.assembly ? `Assembly "${flags.assembly}" has no geometry` : 'No rendered parts match')
     const settings = settingsFor(paths, project)
     const openscad = await resolveOpenscad(paths)
     const bbox = unionBoxes(selected.map((p) => p.bbox).filter((b) => b !== null))

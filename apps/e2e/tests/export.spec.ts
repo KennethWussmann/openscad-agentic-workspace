@@ -20,7 +20,7 @@ test('asks whether to export the source or the tweaked model', async ({ page, vi
   await viewer.open(project.id)
   await viewer.setParam('width', '25')
   await expect(viewer.envelope).toContainText('25.00 x 10.00 x 5.00')
-  await page.getByRole('button', { name: 'Export 3MF (source or with tweaks)' }).click()
+  await page.getByRole('button', { name: 'Export 3MF (main source or with tweaks)' }).click()
   await expect(page.getByRole('button', { name: /Export source/ })).toBeVisible()
   await page.getByRole('button', { name: /Export with 1 tweak/ }).click()
   const toast = page.locator('.export-toast')

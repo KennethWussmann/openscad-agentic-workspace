@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
 import { readZip, writeZip } from './zip.ts'
 
 export type MeshData = {
@@ -139,4 +140,80 @@ export const name3mf = (file: string, name: string) => {
   const model = modelEntry(files, file)
   files.set(model, Buffer.from(nameModelXml((files.get(model) as Buffer).toString('utf8'), name)))
   writeFileSync(file, writeZip(files))
+}
+
+export type MergedPart = {
+  file: string
+  name: string
+}
+
+const hexColor = (rgb: number) => `#${(rgb & 0xffffff).toString(16).padStart(6, '0')}`
+
+const dominantColor = (data: MeshData): number => {
+  const counts = new Map<number, number>()
+  for (const c of data.colors) if (c >= 0) counts.set(c, (counts.get(c) ?? 0) + 1)
+  return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? OPENSCAD_DEFAULT_COLOR
+}
+
+const CONTENT_TYPES = `<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml" />
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
+</Types>`
+
+const RELS = `<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/3dmodel.model" Id="rel0" />
+</Relationships>`
+
+const num = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(6))
+
+export const merge3mf = (out: string, title: string, parts: MergedPart[]) => {
+  const materials: number[] = []
+  const materialIndex = (rgb: number) => {
+    const i = materials.indexOf(rgb)
+    if (i >= 0) return i
+    materials.push(rgb)
+    return materials.length - 1
+  }
+  const objects = parts.map((part) => {
+    const data = read3mf(part.file)
+    const pindex = materialIndex(dominantColor(data))
+    return { name: part.name, data, pindex }
+  })
+  const materialXml = materials
+    .map((rgb, i) => `<base name="Color ${i + 1}" displaycolor="${hexColor(rgb)}FF" />`)
+    .join('')
+  const objectXml = objects
+    .map((o, i) => {
+      const id = i + 2
+      const vertices = Array.from(
+        { length: o.data.positions.length / 3 },
+        (_, v) =>
+          `<vertex x="${num(o.data.positions[v * 3])}" y="${num(o.data.positions[v * 3 + 1])}" z="${num(o.data.positions[v * 3 + 2])}" />`,
+      ).join('')
+      const triangles = Array.from({ length: o.data.index.length / 3 }, (_, t) => {
+        const [a, b, c] = [o.data.index[t * 3], o.data.index[t * 3 + 1], o.data.index[t * 3 + 2]]
+        return `<triangle v1="${a}" v2="${b}" v3="${c}" pid="1" p1="${o.pindex}" />`
+      }).join('')
+      return `<object id="${id}" name="${escapeXml(o.name)}" type="model" pid="1" pindex="${o.pindex}"><mesh><vertices>${vertices}</vertices><triangles>${triangles}</triangles></mesh></object>`
+    })
+    .join('')
+  const buildXml = objects.map((_, i) => `<item objectid="${i + 2}" />`).join('')
+  const model = `<?xml version="1.0" encoding="utf-8"?>
+<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+  <metadata name="Title">${escapeXml(title)}</metadata>
+  <resources>
+    <basematerials id="1">${materialXml}</basematerials>
+    ${objectXml}
+  </resources>
+  <build>${buildXml}</build>
+</model>`
+  const files = new Map<string, Buffer>([
+    ['[Content_Types].xml', Buffer.from(CONTENT_TYPES)],
+    ['_rels/.rels', Buffer.from(RELS)],
+    ['3D/3dmodel.model', Buffer.from(model)],
+  ])
+  mkdirSync(path.dirname(out), { recursive: true })
+  writeFileSync(out, writeZip(files))
 }

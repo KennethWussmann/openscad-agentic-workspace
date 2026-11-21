@@ -6,12 +6,13 @@ import {
   readRender,
   requireProject,
   requireSet,
+  validatePartParams,
   validateSets,
 } from '@scad/core'
 import { type Ctx, need, type Outcome, partsFlag, settingsFor } from '../context.ts'
 import { formatDiagnostic, table } from '../format/common.ts'
 import { formatRender } from '../format/render.ts'
-import { formatSetIssues, formatValues } from '../format/sets.ts'
+import { formatPartParamIssues, formatSetIssues, formatValues } from '../format/sets.ts'
 import { viewerUrl } from '../server.ts'
 import { renderViaServerOrLocal, sheetFor } from './rendering.ts'
 
@@ -22,9 +23,10 @@ export const render = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
   const set = flags.set ? requireSet(meta, flags.set) : null
   const { result, server } = await renderViaServerOrLocal(paths, project, partsFlag(flags), set?.name)
   const setIssues = validateSets(meta, result.params)
+  const partParamIssues = validatePartParams(meta, result.params)
   if (!server && !set && result.status === 'ok') await generateCover(paths, project, result)
   const wantSheet = flags.sheet ?? settingsFor(paths, project).render.sheet
-  const sheet = wantSheet && result.parts.some((p) => p.model) ? await sheetFor(paths, project, result) : null
+  const sheet = wantSheet ? await sheetFor(paths, project, result) : null
   const dirty = isDirty(paths, project)
   const latest = listVersions(paths, project).at(-1)
   const data = {
@@ -35,10 +37,12 @@ export const render = async ({ paths, flags, args }: Ctx): Promise<Outcome> => {
     latestVersion: latest?.id ?? null,
     changedSinceVersion: dirty,
     setIssues,
+    partParamIssues,
   }
   const lines = [formatRender(result)]
   if (set) lines.push(`  set ${set.name}: ${formatValues(set.def.values)}`)
   lines.push(...formatSetIssues(setIssues))
+  lines.push(...formatPartParamIssues(partParamIssues))
   if (sheet?.sheet) lines.push(`  sheet: ${sheet.sheet}  (2x2: iso | front / right | top)`)
   for (const d of sheet?.diagnostics ?? []) lines.push(`  sheet ${formatDiagnostic(d)}`)
   lines.push(

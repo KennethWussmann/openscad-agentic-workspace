@@ -8,8 +8,15 @@ export const Console = ({ project }: { project: ProjectState }) => {
   const open = useStore((s) => s.console)
   const toggle = useStore((s) => s.toggleConsole)
   if (!open) return null
-  const lines =
+  const lines = (
     project.render?.parts.flatMap((p) => p.diagnostics.map((d, n) => ({ ...d, part: p.id, id: `${p.id}:${n}` }))) ?? []
+  ).concat(
+    project.render?.assemblies.flatMap((a) =>
+      a.parts.flatMap((p) =>
+        p.diagnostics.map((d, n) => ({ ...d, part: `${a.id}/${p.id}`, id: `${a.id}:${p.id}:${n}` })),
+      ),
+    ) ?? [],
+  )
   return (
     <div className="console">
       <header>

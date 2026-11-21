@@ -21,23 +21,31 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
   const tweaks = Object.keys(edits).length
   const version = versionId ? project.versions.find((v) => v.id === versionId) : null
   const set = activeSet && project.sets[activeSet] ? activeSet : null
+  const viewMode = useStore((s) => s.viewMode)
+  const selectedPart = useStore((s) => s.selectedPart)
+  const selectedAssembly = useStore((s) => s.selectedAssembly)
+  const assembly = viewMode === 'assembly' ? selectedAssembly : null
+  const part = viewMode === 'print' ? (selectedPart ?? project.parts.find((p) => p.preview)?.id ?? null) : null
 
   const run = (withSet: boolean, withTweaks: boolean) => {
     setMenu(false)
     api
-      .exportModels(project.id, withTweaks ? edits : {}, withSet ? set : null)
+      .exportModels(project.id, withTweaks ? edits : {}, withSet ? set : null, part, assembly)
       .then((result) => deliverExport(project.id, result))
       .catch((e: unknown) => showExportNotice({ result: null, error: errorMessage(e) }))
   }
 
   const onClick = () => {
     if (version) {
+      const stored = assembly
+        ? (version.assemblies.find((a) => a.id === assembly)?.parts ?? [])
+        : version.parts.filter((p) => (!part || p.id === part) && p.model)
       download(
-        version.parts
+        stored
           .filter((p) => p.model)
           .map((p) => ({
             url: api.fileUrl(project.id, p.model as string, version.id),
-            name: `${project.id}-${p.id}-${version.id}.3mf`,
+            name: `${project.id}${assembly ? `-${assembly}` : `-${p.id}`}-${version.id}.3mf`,
           })),
       )
       return
@@ -51,10 +59,8 @@ export const ExportButton = ({ project }: { project: ProjectState }) => {
     : exporting
       ? 'Export running'
       : tweaks
-        ? `Export 3MF (source${set ? ', set' : ''} or with tweaks)`
-        : set
-          ? `Export 3MF (set ${set})`
-          : 'Export 3MF'
+        ? `Export 3MF (${assembly ?? part}${set ? `, set ${set}` : ''} source or with tweaks)`
+        : `Export 3MF (${assembly ?? part}${set ? `, set ${set}` : ''})`
   const blocked = exporting && !version
 
   return (

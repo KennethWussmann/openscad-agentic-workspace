@@ -15,6 +15,12 @@ export type VersionPart = {
   bbox: BBox | null
 }
 
+export type VersionAssembly = {
+  id: string
+  label?: string
+  parts: VersionPart[]
+}
+
 export type VersionMeta = {
   id: string
   index: number
@@ -22,6 +28,7 @@ export type VersionMeta = {
   createdAt: string
   restoredFrom?: string
   parts: VersionPart[]
+  assemblies: VersionAssembly[]
   params: Record<string, DefineValue>
   inputs: InputFile[]
   libraries: LockedLibrary[]
